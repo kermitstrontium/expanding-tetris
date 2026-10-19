@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-  <meta name="et-build" content="20261019-230334">
+  <meta name="et-build" content="20261019-231350">
   <meta name="theme-color" content="#0b0e1a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -49,7 +49,7 @@
     <div class="sheet">
       <h1 class="logo"><small>Expanding</small>TETRIS</h1>
       <button class="primary" data-act="play">Play</button>
-      <div class="settings"></div>
+      <button data-act="settings">Settings</button>
       <div class="best"></div>
       <button class="credits-link" data-act="credits">Credits</button>
       <p class="credits" hidden></p>
@@ -61,14 +61,28 @@
       <h2>Paused</h2>
       <button class="primary" data-act="resume">Resume</button>
       <button data-act="restart">Restart</button>
+      <button data-act="settings">Settings</button>
       <button data-act="quit">Main menu</button>
+    </div>
+  </section>
+
+  <section id="settings" class="overlay" hidden>
+    <div class="sheet">
+      <h2>Settings</h2>
       <div class="settings"></div>
+      <button class="primary" data-act="settings-done">Done</button>
     </div>
   </section>
 
   <section id="over" class="overlay" hidden>
     <div class="sheet">
-      <h2>Game over</h2>
+      <h2 class="arcade over-title">GAME OVER</h2>
+      <div class="entry" hidden>
+        <div class="arcade new-hs">NEW HIGH SCORE!</div>
+        <label class="arcade initials-label">ENTER YOUR INITIALS
+          <input class="initials arcade" maxlength="3" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="done">
+        </label>
+      </div>
       <div class="result"></div>
       <button class="primary" data-act="play">Play again</button>
       <button data-act="quit">Main menu</button>

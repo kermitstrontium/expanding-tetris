@@ -37,6 +37,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         ".png": "image/png",
         ".ico": "image/x-icon",
         ".woff2": "font/woff2",
+        ".ttf": "font/ttf",
         ".txt": "text/plain; charset=utf-8",
         ".md": "text/markdown; charset=utf-8",
         "": "application/octet-stream",

@@ -19,7 +19,8 @@ const defaults = {
   sfxVol: 0.7,
   level: 1,
   startWidth: 10,
-  best: [],           // [{ score, lines, width, date }]
+  best: [],           // [{ score, lines, width, start, name, date }]
+  initials: '',
 };
 
 function load() {
@@ -140,11 +141,30 @@ function buildSettings(el, { showLevel }) {
   }));
 }
 
+// ---- high scores -------------------------------------------------------------
+
+const RANK = ['1ST', '2ND', '3RD', '4TH', '5TH', '6TH', '7TH', '8TH', '9TH', '10TH'];
+const pad = (n) => String(n).padStart(6, '0');
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+let latest = null;   // the entry from the game just played, so it can blink
+
+// An arcade-style table. Empty slots show dashes so the board looks full.
+function scoreTable(n, highlight) {
+  const rows = [];
+  for (let i = 0; i < n; i++) {
+    const b = settings.best[i];
+    const cls = [`r${i + 1}`, b && b === highlight ? 'blink' : ''].join(' ');
+    rows.push(b
+      ? `<li class="${cls}"><span class="rk">${RANK[i]}</span><span class="nm">${esc(b.name || '???')}</span>` +
+        `<span class="sc">${pad(b.score)}</span><span class="mt">L${b.lines} W${b.width}</span></li>`
+      : `<li class="${cls} empty"><span class="rk">${RANK[i]}</span><span class="nm">---</span>` +
+        `<span class="sc">------</span><span class="mt"></span></li>`);
+  }
+  return `<div class="hiscores arcade"><div class="hs-title">HIGH SCORES</div><ol>${rows.join('')}</ol></div>`;
+}
+
 function renderBest() {
-  const el = $('#menu .best');
-  if (!settings.best.length) { el.innerHTML = ''; return; }
-  el.innerHTML = '<span class="label">Best</span><ol>' + settings.best.slice(0, 5).map((b) =>
-    `<li>${b.score.toLocaleString()} <span class="muted">· ${b.lines} lines · width ${b.start && b.start !== 10 ? b.start + '→' : ''}${b.width}</span></li>`).join('') + '</ol>';
+  $('#menu .best').innerHTML = scoreTable(5, latest);
 }
 
 function renderCredits() {
@@ -155,15 +175,23 @@ function renderCredits() {
 // ---- screens -------------------------------------------------------------------
 
 function show(id) {
-  for (const s of ['menu', 'pause', 'over']) $('#' + s).hidden = s !== id;
+  for (const s of ['menu', 'pause', 'over', 'settings']) $('#' + s).hidden = s !== id;
 }
 
 function openMenu() {
   mode = 'menu';
   input.enabled = false;
-  buildSettings($('#menu .settings'), { showLevel: true });
   renderBest();
   show('menu');
+}
+
+// Settings is its own screen, opened from the main menu or the pause menu,
+// and goes back to wherever it came from.
+let settingsFrom = 'menu';
+function openSettings() {
+  settingsFrom = mode === 'paused' ? 'pause' : 'menu';
+  buildSettings($('#settings .settings'), { showLevel: settingsFrom === 'menu' });
+  show('settings');
 }
 
 function newGame() {
@@ -186,7 +214,6 @@ function pause() {
   input.enabled = false;
   input.releaseAll();
   audio.pause();
-  buildSettings($('#pause .settings'), { showLevel: false });
   show('pause');
 }
 
@@ -207,21 +234,49 @@ function gameOver(e) {
   input.enabled = false;
   audio.stop();
   audio.sfx('gameover');
-  const entry = { score: e.score, lines: e.lines, width: e.width, start: game.startWidth, date: Date.now() };
-  const best = settings.best.slice();
-  best.push(entry);
-  best.sort((a, b) => b.score - a.score);
-  settings.best = best.slice(0, 10);
+  const entry = {
+    score: e.score, lines: e.lines, width: e.width, start: game.startWidth,
+    name: settings.initials || 'AAA', date: Date.now(),
+  };
+  const best = settings.best.concat(entry).sort((a, b) => b.score - a.score).slice(0, 10);
+  const rank = best.indexOf(entry);
+  const made = rank >= 0 && e.score > 0;
+  if (made) settings.best = best;
+  latest = made ? entry : null;
   save();
-  const isBest = settings.best[0] === entry && e.score > 0;
-  $('#over .result').innerHTML = `
-    ${isBest ? '<div class="new">New best!</div>' : ''}
-    <span>Score</span><b>${e.score.toLocaleString()}</b>
-    <span>Lines</span><b>${e.lines}</b>
-    <span>Level</span><b>${game.level}</b>
-    <span>Four-line clears</span><b>${game.tetrises}</b>
-    <span>Final width</span><b>${e.width}</b>`;
-  setTimeout(() => { if (mode === 'over') show('over'); }, 900);
+
+  // Made the table: ask for initials (prefilled with last time's). Typing
+  // updates the saved entry as you go, so no extra button is needed.
+  const box = $('#over .entry');
+  box.hidden = !made;
+  const inp = $('#over .initials');
+  if (made) {
+    $('#over .new-hs').textContent = rank === 0 ? 'NEW HIGH SCORE!' : `${RANK[rank]} PLACE!`;
+    inp.value = entry.name;
+    inp.oninput = () => {
+      inp.value = inp.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3);
+      entry.name = inp.value || '???';
+      settings.initials = inp.value || settings.initials;
+      save();
+      drawOverTable();
+    };
+    inp.onkeydown = (ev) => { if (ev.key === 'Enter') inp.blur(); };
+  }
+  const drawOverTable = () => {
+    $('#over .result').innerHTML = `
+      <div class="final arcade">
+        <div><span>SCORE</span><b>${pad(e.score)}</b></div>
+        <div><span>LINES</span><b>${e.lines}</b></div>
+        <div><span>LEVEL</span><b>${game.level}</b></div>
+        <div><span>WIDTH</span><b>${e.width}</b></div>
+      </div>` + (made ? scoreTable(Math.max(5, rank + 1), entry) : '');
+  };
+  drawOverTable();
+  setTimeout(() => {
+    if (mode !== 'over') return;
+    show('over');
+    if (made && matchMedia('(hover: hover)').matches) inp.select();
+  }, 900);
 }
 
 document.addEventListener('click', (e) => {
@@ -233,6 +288,8 @@ document.addEventListener('click', (e) => {
   else if (a === 'resume') resume();
   else if (a === 'quit') { audio.stop(); openMenu(); }
   else if (a === 'credits') { const c = $('#menu .credits'); c.hidden = !c.hidden; }
+  else if (a === 'settings') openSettings();
+  else if (a === 'settings-done') { show(settingsFrom); if (settingsFrom === 'menu') renderBest(); }
 });
 $('#pauseBtn').addEventListener('click', () => (mode === 'paused' ? resume() : pause()));
 document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });

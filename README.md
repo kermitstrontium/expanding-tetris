@@ -74,6 +74,9 @@ The music speeds up with level, and again when the stack passes 14 rows.
 
 All arrangements are chiptune voices synthesised live; there are no audio files.
 
+The high-score font is **Press Start 2P** by Cody "CodeMan38" Boisclair,
+bundled in `fonts/` under the SIL Open Font License (`fonts/PressStart2P-OFL.txt`).
+
 **Heads-up:** the site is public (GitHub Pages on a free account needs a
 public repo). Type B is Nintendo's, and "Tetris" is a trademark of The
 Tetris Company. That's fine for sharing with family, but either could draw

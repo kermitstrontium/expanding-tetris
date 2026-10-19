@@ -124,17 +124,41 @@ for (const theme of ['gameboy', 'neon', 'paper']) {
 }
 
 await run('start-width', { width: 390, height: 844 }, async (page) => {
+  check(!(await page.isVisible('#menu .settings')) && (await page.locator('#menu .chip').count()) === 0, 'title screen has no settings on it');
+  await page.click('#menu [data-act=settings]');
+  check(await page.isVisible('#settings'), 'Settings button opens the settings screen');
+
   check(!(await page.isVisible('#menu .credits')), 'credits hidden until asked for');
-  await page.click('[data-act=credits]');
-  check(await page.isVisible('#menu .credits'), 'Credits link reveals them');
   check((await page.locator('#menu details').count()) === 0, 'no How to play section');
-  await page.click('#menu .chip:text-is("20")');
+  await page.click('#settings .chip:text-is("20")');
+  await page.screenshot({ path: 'shots/phone-settings.png' });
+  await page.click('[data-act=settings-done]');
+  check(await page.isVisible('#menu'), 'Done goes back to the title screen');
   await page.screenshot({ path: 'shots/phone-menu.png' });
   await page.click('[data-act=play]');
   await page.waitForTimeout(300);
   const g = await page.evaluate(() => ({ w: window.xt.game.width, v: window.xt.game.visible }));
   check(g.w === 20 && g.v === 40, `start width 20 -> 20 x 40 field (got ${g.w} x ${g.v})`);
   await page.screenshot({ path: 'shots/phone-start20.png' });
+  // Seed a few scores, then lose: a new high score asks for initials.
+  await page.evaluate(() => {
+    const st = window.xt.settings;
+    st.best = [{ score: 46255, lines: 56, width: 34, name: 'HJB' }, { score: 1291, lines: 5, width: 12, name: 'MUM' }];
+    const g = window.xt.game;
+    g.score = 99999; g.lines = 70;
+    g.gameOver('test');
+  });
+  await page.waitForTimeout(1300);
+  check(await page.isVisible('#over .initials'), 'new high score asks for initials');
+  await page.fill('#over .initials', 'zed');
+  const top = await page.evaluate(() => window.xt.settings.best[0]);
+  check(top.name === 'ZED' && top.score === 99999, `initials saved upper-case (${top.name})`);
+  await page.screenshot({ path: 'shots/phone-gameover.png' });
+  await page.click('#over [data-act=quit]');
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: 'shots/phone-menu-scores.png' });
+  await page.click('[data-act=credits]');
+  check(await page.isVisible('#menu .credits'), 'Credits link reveals them');
 });
 
 await run('landscape', { width: 844, height: 390 }, async (page) => {
