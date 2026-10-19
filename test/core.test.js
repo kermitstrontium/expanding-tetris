@@ -80,9 +80,11 @@ test('TETRIS widens the field by one column each side', () => {
   assert.ok(ev.includes('expand'));
   for (const row of g.board) assert.equal(row.length, START_WIDTH + 2);
   // the surviving block moved down 4 rows and right 1 column
-  assert.equal(g.board[ROWS - 1][1], 'T');
-  assert.equal(g.board[ROWS - 1][0], null);
-  assert.equal(g.board[ROWS - 1][START_WIDTH + 1], null);
+  const bottom = g.rows - 1;
+  assert.equal(g.board[bottom][1], 'T');
+  assert.equal(g.board[bottom][0], null);
+  assert.equal(g.board[bottom][START_WIDTH + 1], null);
+  assert.equal(g.visible, 24, '12 wide -> 24 rows');
   // the next piece spawns centred in the new width
   assert.equal(g.piece.x, Math.floor((g.width - (g.piece.type === 'I' ? 4 : g.piece.type === 'O' ? 2 : 3)) / 2));
   assert.equal(g.score, 800 + 2 * (ROWS - 4), '800 for the tetris + 2 per hard-drop row');
@@ -91,7 +93,8 @@ test('TETRIS widens the field by one column each side', () => {
 test('back-to-back tetrises keep widening and score 1.5x', () => {
   const g = new Game({ seed: 6 });
   for (let n = 0; n < 3; n++) {
-    const rows = [ROWS - 4, ROWS - 3, ROWS - 2, ROWS - 1];
+    const R = g.rows;
+    const rows = [R - 4, R - 3, R - 2, R - 1];
     fillRows(g, rows, g.width - 1);
     dropVerticalI(g, g.width - 1);
     g.update(CLEAR_DELAY);
@@ -101,8 +104,8 @@ test('back-to-back tetrises keep widening and score 1.5x', () => {
   assert.ok(g.score >= 800 + 1200 + 1200);
 });
 
-test('with rowsFor, widening also adds rows at the top', () => {
-  const g = new Game({ seed: 13, rowsFor: (w) => 20 + (w - 10) * 2 });
+test('widening also adds rows at the top, keeping a 1:2 field', () => {
+  const g = new Game({ seed: 13 });
   const R0 = g.rows;
   fillRows(g, [R0 - 4, R0 - 3, R0 - 2, R0 - 1], 9);
   g.board[R0 - 5][3] = 'T';
@@ -213,7 +216,7 @@ test('every theme has the required keys', () => {
 });
 
 test('long random play never corrupts the board', () => {
-  const g = new Game({ seed: 12, rowsFor: (w) => 20 + w });
+  const g = new Game({ seed: 12 });
   let steps = 0;
   while (!g.over && steps < 20000) {
     const r = g.rand();

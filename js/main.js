@@ -41,9 +41,9 @@ let game = null;
 let mode = 'menu';     // menu | playing | paused | over
 let theme = null;
 
-const input = new Input($('#stage'), act, () => renderer.cell);
-// Drags that start on the HUD shouldn't scroll, zoom or select anything.
-$('#app').addEventListener('touchmove', (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+// Gestures work anywhere on the game screen, including over the HUD panels
+// (they're display-only), so nothing gets in the way in either orientation.
+const input = new Input($('#app'), act, () => renderer.cell);
 
 const nextCanvases = [];
 for (let i = 0; i < 5; i++) {
@@ -165,8 +165,7 @@ function openMenu() {
 
 function newGame() {
   audio.unlock();
-  // As the field widens it also grows tall enough to keep filling the screen.
-  game = new Game({ level: settings.level, rowsFor: (w) => renderer.fitRows(w) });
+  game = new Game({ level: settings.level });
   renderer.wallAnim = 0;
   renderer.particles.length = 0;
   mode = 'playing';

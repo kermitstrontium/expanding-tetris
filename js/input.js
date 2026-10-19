@@ -14,6 +14,7 @@ const DAS = 150;  // ms before auto-repeat starts
 const SLOW_STEP = 22;   // px of slow drag per column
 const FAST_MIN = 7;     // px per column at full swipe speed, at least
 const lerp = (a, b, t) => a + (b - a) * t;
+const onButton = (e) => !!e.target?.closest?.('button');
 const ARR = 35;   // ms between repeats
 
 const KEYMAP = {
@@ -53,7 +54,8 @@ export class Input {
     // iOS: a drag that lingers can start a text selection and show the
     // magnifier loupe, even with user-select: none. Cancelling the touch
     // events themselves stops that; pointer events still fire.
-    const stop = (e) => { if (e.cancelable) e.preventDefault(); };
+    // Buttons inside the surface (pause) keep working normally.
+    const stop = (e) => { if (e.cancelable && !onButton(e)) e.preventDefault(); };
     surface.addEventListener('touchstart', stop, { passive: false });
     surface.addEventListener('touchmove', stop, { passive: false });
     surface.addEventListener('touchend', stop, { passive: false });
@@ -114,9 +116,11 @@ export class Input {
   // ---- touch ---------------------------------------------------------------
 
   down(e) {
-    if (!this.enabled) return;
+    if (!this.enabled || onButton(e)) return;
     e.preventDefault();
-    e.currentTarget.setPointerCapture?.(e.pointerId);
+    // Keep receiving moves if the finger leaves the element. Can throw for
+    // a pointer the browser no longer tracks; capture is a nicety, not needed.
+    try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch {}
     // A new first finger means any remembered touches are stale.
     if (e.isPrimary) this.pointers.clear();
     this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });

@@ -3,9 +3,10 @@
 // The twist: clearing four lines at once (a "tetris") adds one empty column
 // to each side of the field. The field never shrinks.
 //
-// It can also grow taller: if the game is given a rowsFor(width) callback,
-// each widening adds empty rows at the top up to that many visible rows, so
-// the field keeps filling the screen instead of shrinking to a strip.
+// It grows taller too: each widening adds empty rows at the top so the
+// field keeps the classic 1:2 shape (width 12 -> 24 rows, 34 -> 68). The
+// rule is fixed, never screen-dependent, so every device plays the same
+// game.
 //
 // Coordinates: x = column (0 = leftmost), y = row (0 = top). The board has
 // HIDDEN rows above the visible ones; pieces spawn in the hidden rows.
@@ -15,9 +16,10 @@
 export const VISIBLE = 20;
 export const HIDDEN = 2;
 export const ROWS = VISIBLE + HIDDEN;
-export const MAX_VISIBLE = 100;
 export const START_WIDTH = 10;
 export const MAX_WIDTH = 200;          // sanity cap; nobody gets here
+export const ROWS_PER_COL = 2;
+export const MAX_VISIBLE = ROWS_PER_COL * MAX_WIDTH;
 export const LINES_PER_LEVEL = 10;
 export const LOCK_DELAY = 500;         // ms on the ground before locking
 export const LOCK_RESETS = 15;         // moves/rotations that refresh it
@@ -104,7 +106,7 @@ export class Game {
     this.width = opts.width ?? START_WIDTH;
     this.startLevel = opts.level ?? 1;
     this.visible = VISIBLE;
-    this.rowsFor = opts.rowsFor || null;   // (width) => visible rows wanted
+    this.grow = opts.grow ?? true;         // tests can turn height growth off
     this.rand = mulberry32(opts.seed ?? (Math.random() * 2 ** 32) >>> 0);
     this.board = [];
     for (let y = 0; y < this.rows; y++) this.board.push(new Array(this.width).fill(null));
@@ -354,7 +356,7 @@ export class Game {
     this.width += 2;
     this.expansions++;
     const prevVisible = this.visible;
-    if (this.rowsFor) this.growTo(this.rowsFor(this.width));
+    if (this.grow) this.growTo(this.width * ROWS_PER_COL);
     this.emit('expand', { width: this.width, visible: this.visible, prevVisible });
   }
 

@@ -1,10 +1,9 @@
 // Canvas renderer.
 //
 // World units are cells. The walls sit at column -1 and column `width`.
-// The whole field is always visible. When it widens, the view zooms out so
-// the field plus both walls fit; if the game also grew taller (see
-// fitRows), the new rows fill the height the zoom freed up, so the field
-// keeps the same place on screen. Both animate with the wall slide.
+// The whole field is always visible. When it widens (and grows taller, see
+// core.js), the view zooms out so the field plus walls fit the screen. The
+// zoom and the new rows animate with the wall slide.
 
 import { HIDDEN, VISIBLE, CLEAR_DELAY, LOCK_DELAY, shapeCells } from './core.js';
 import { painterFor } from './themes/index.js';
@@ -44,14 +43,6 @@ export class Renderer {
     this.canvas.width = Math.round(this.w * dpr);
     this.canvas.height = Math.round(this.h * dpr);
     this.layout(this.width ?? 10, this.visDisp, this.visDisp + HIDDEN);
-  }
-
-  // How many visible rows fill the screen once the field is `width` wide.
-  // A 10-wide field gets the standard 20; wider fields that have to zoom
-  // out get as many as fit the freed-up height. The game calls this.
-  fitRows(width) {
-    const cell = Math.min(this.w / Math.max(MIN_COLS, width + 2), this.h / (VISIBLE + EXTRA_ROWS));
-    return Math.max(VISIBLE, Math.floor(this.h / cell - EXTRA_ROWS + 1e-6));
   }
 
   // Cell size from the (animated) columns and rows on screen. The field is

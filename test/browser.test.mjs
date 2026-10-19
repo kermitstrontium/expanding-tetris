@@ -69,7 +69,7 @@ await run('phone', { width: 390, height: 844 }, async (page) => {
     return { w: g.width, vis: g.visible, cell: r.cell, left: r.sx(-1), right: r.sx(g.width + 1), top: r.sy(1), bot: r.sy(g.rows + 1), cw: r.w, ch: r.h };
   });
   check(st3.w === 34, `width 34 (got ${st3.w})`);
-  check(st3.vis > 40, `field grew taller (${st3.vis} visible rows)`);
+  check(st3.vis === 68, `field grew taller, keeping 1:2 (${st3.vis} visible rows)`);
   check(st3.left >= 0 && st3.right <= st3.cw + 0.5, 'wide field fits horizontally');
   check(st3.top >= -0.5 && st3.bot <= st3.ch + 0.5 && st3.bot > st3.ch * 0.85, `tall field fills the height (${st3.top.toFixed(0)}..${st3.bot.toFixed(0)} of ${st3.ch.toFixed(0)})`);
   await page.screenshot({ path: 'shots/phone-34.png' });
@@ -97,7 +97,7 @@ await run('phone', { width: 390, height: 844 }, async (page) => {
   check(-fast >= 10, `fast 110px swipe moves further (got ${-fast})`);
 
   // Touch: tap rotates.
-  const rot0 = await page.evaluate(() => window.xt.game.piece?.rot);
+  const rot0 = await page.evaluate(() => { const g = window.xt.game; g.piece = { type: 'T', rot: 0, x: Math.floor(g.width / 2), y: 5 }; return 0; });
   await page.touchscreen.tap(195, 500);
   await page.waitForTimeout(100);
   const rot1 = await page.evaluate(() => window.xt.game.piece?.rot);
@@ -122,6 +122,33 @@ for (const theme of ['gameboy', 'neon', 'paper']) {
     await page.screenshot({ path: `shots/phone-${theme}.png` });
   });
 }
+
+await run('landscape', { width: 844, height: 390 }, async (page) => {
+  await page.click('[data-act=play]');
+  await page.waitForTimeout(300);
+  // A drag starting over the NEXT panel still moves the piece.
+  const box = await page.locator('.next-box').boundingBox();
+  const moved = await page.evaluate(([x, y]) => {
+    const g = window.xt.game;
+    g.piece.x = 2; g.piece.y = 3;
+    const el = document.elementFromPoint(x, y);
+    const opts = (cx) => ({ bubbles: true, cancelable: true, pointerId: 5, pointerType: 'touch', isPrimary: true, clientX: cx, clientY: y });
+    el.dispatchEvent(new PointerEvent('pointerdown', opts(x)));
+    for (let i = 1; i <= 10; i++) el.dispatchEvent(new PointerEvent('pointermove', opts(x + i * 6)));
+    el.dispatchEvent(new PointerEvent('pointerup', opts(x + 60)));
+    return { dx: g.piece.x - 2, on: el.closest('.next-box') ? 'next-box' : el.tagName };
+  }, [box.x + box.width / 2, box.y + box.height / 2]);
+  check(moved.on === 'next-box' && moved.dx >= 2, `landscape: drag over the ${moved.on} panel moves the piece (${moved.dx} cols)`);
+  await page.click('#pauseBtn');
+  await page.waitForTimeout(150);
+  check(await page.isVisible('#pause'), 'landscape: pause button still works');
+  await page.click('[data-act=resume]');
+  await page.evaluate(() => { for (let i = 0; i < 12; i++) window.xt.game.expand(); window.xt.renderer.wallAnim = 0; });
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: 'shots/landscape-34.png' });
+  const v = await page.evaluate(() => window.xt.game.visible);
+  check(v === 68, `same rules on every screen: 34 wide -> 68 rows here too (got ${v})`);
+});
 
 await run('desktop', { width: 1280, height: 800 }, async (page) => {
   await page.click('[data-act=play]');

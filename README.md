@@ -3,11 +3,14 @@
 A falling-blocks game with one twist: **every four-line clear (a "tetris")
 pushes both walls out by one column.** The field starts 10 wide and keeps
 growing, and the view zooms out as the walls slide apart so the whole
-field is always on screen. Once zooming out would leave empty space above
-and below, the field also grows **taller** (empty rows at the top), so it
-keeps filling the screen and pieces have longer to travel sideways. How
-tall depends on the screen shape: a phone gains rows from the first
-widening; a desktop only once the field fills the width. Rows never shrink.
+field is always on screen. It grows **taller** at the same time
+(empty rows at the top), keeping the classic 1:2 shape: 12 wide is 24 rows,
+34 wide is 68. Pieces get longer to travel sideways, and the field keeps
+filling a phone held upright. The rule is fixed rather than fitted to the
+screen, so phone and desktop play exactly the same game. Rows never shrink.
+
+Gestures work anywhere on the game screen, including over the score and
+next/hold panels; only the pause button is a button.
 
 Installable PWA, works offline, no build step, no dependencies.
 

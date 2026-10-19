@@ -49,6 +49,7 @@ html, body {
     "stats stats stats"
     "stage stage stage";
   gap: 6px;
+  touch-action: none;
 }
 
 /* Portrait: the side panels dissolve so their children sit in the grid. */
@@ -260,3 +261,17 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 .result { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: 16px; margin-bottom: 6px; }
 .result b { text-align: right; font-variant-numeric: tabular-nums; }
 .result .new { grid-column: 1 / -1; text-align: center; color: var(--accent); font-weight: 800; }
+
+/* Short landscape screens (phones on their side): compact side panels so
+   everything, including pause, fits without scrolling. */
+@media (min-aspect-ratio: 1/1) and (min-width: 640px) and (max-height: 520px) {
+  #left, #right { padding-top: 0; gap: 6px; }
+  #hold { width: 72px; height: 44px; }
+  .stats { width: 120px; padding: 6px 10px; gap: 2px; }
+  .stat b { font-size: 16px; }
+  .stat.score b { font-size: 19px; }
+  #next canvas, #next canvas:first-child { width: 72px; height: 40px; }
+  #next canvas:nth-child(n+4) { display: none; }
+  #next { gap: 2px; }
+  .icon-btn { height: 36px; }
+}
