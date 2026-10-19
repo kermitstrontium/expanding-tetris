@@ -37,23 +37,30 @@ await run('phone', { width: 390, height: 844 }, async (page) => {
     });
     await page.waitForTimeout(900);
   }
-  const st = await page.evaluate(() => ({ w: window.xt.game.width, cols: window.xt.renderer.viewCols, hud: document.querySelector('#width').textContent }));
+  const cell10 = 390 / 12;
+  const st = await page.evaluate(() => {
+    const r = window.xt.renderer, g = window.xt.game;
+    return { w: g.width, cell: r.cell, left: r.sx(-1), right: r.sx(g.width + 1), cw: r.w, hud: document.querySelector('#width').textContent };
+  });
   check(st.w === 16, `width is 16 after three tetrises (got ${st.w})`);
   check(st.hud === '16', 'HUD shows the width');
-  check(st.cols < st.w + 2, `phone viewport (${st.cols} cols) is narrower than the field, so the camera must follow`);
+  check(st.cell < cell10 * 0.8, `view zoomed out (cell ${st.cell}px)`);
+  check(st.left >= 0 && st.right <= st.cw + 0.5, `whole field incl. walls on screen (${st.left.toFixed(0)}..${st.right.toFixed(0)} of ${st.cw})`);
   await page.evaluate(() => { const g = window.xt.game; for (let y = g.board.length - 3; y < g.board.length; y++) for (let x = 0; x < g.width; x++) if ((x * 7 + y) % 3) g.board[y][x] = 'JLSTZOI'[(x + y) % 7]; });
-  // Move the piece hard left and confirm the camera went with it.
-  const camBefore = await page.evaluate(() => window.xt.renderer.camX);
-  for (let i = 0; i < 12; i++) await page.keyboard.press('ArrowLeft');
-  await page.waitForTimeout(700);
-  const camLeft = await page.evaluate(() => window.xt.renderer.camX);
-  check(camLeft < camBefore - 0.5, `camera pans left with the piece (${camBefore.toFixed(2)} -> ${camLeft.toFixed(2)})`);
-  await page.screenshot({ path: 'shots/phone-wide-left.png' });
-  for (let i = 0; i < 20; i++) await page.keyboard.press('ArrowRight');
-  await page.waitForTimeout(700);
-  const camRight = await page.evaluate(() => window.xt.renderer.camX);
-  check(camRight > camLeft + 2, `camera pans right with the piece (-> ${camRight.toFixed(2)})`);
-  await page.screenshot({ path: 'shots/phone-wide-right.png' });
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: 'shots/phone-wide.png' });
+  // Mid-expansion frame, for eyeballing the slide + zoom.
+  await page.evaluate(() => {
+    const g = window.xt.game, R = g.board.length;
+    for (let y = R - 7; y < R - 3; y++) for (let x = 0; x < g.width - 1; x++) g.board[y][x] = 'T';
+    g.piece = { type: 'I', rot: 1, x: g.width - 3, y: 0 };
+    g.hardDrop();
+  });
+  await page.waitForTimeout(450);
+  await page.screenshot({ path: 'shots/phone-expanding.png' });
+  await page.waitForTimeout(800);
+  const st2 = await page.evaluate(() => { const r = window.xt.renderer, g = window.xt.game; return { w: g.width, left: r.sx(-1), right: r.sx(g.width + 1), cw: r.w }; });
+  check(st2.w === 18 && st2.left >= 0 && st2.right <= st2.cw + 0.5, `still fits after widening to ${st2.w}`);
   // Touch: tap rotates.
   const rot0 = await page.evaluate(() => window.xt.game.piece?.rot);
   await page.touchscreen.tap(195, 500);

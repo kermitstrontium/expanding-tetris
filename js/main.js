@@ -42,6 +42,8 @@ let mode = 'menu';     // menu | playing | paused | over
 let theme = null;
 
 const input = new Input($('#stage'), act, () => renderer.cell);
+// Drags that start on the HUD shouldn't scroll, zoom or select anything.
+$('#app').addEventListener('touchmove', (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
 
 const nextCanvases = [];
 for (let i = 0; i < 5; i++) {
@@ -164,8 +166,7 @@ function openMenu() {
 function newGame() {
   audio.unlock();
   game = new Game({ level: settings.level });
-  renderer.camX = null;
-  renderer.camTarget = null;
+  renderer.wallAnim = 0;
   renderer.particles.length = 0;
   mode = 'playing';
   input.enabled = true;

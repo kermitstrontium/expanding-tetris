@@ -46,6 +46,17 @@ export class Input {
     surface.addEventListener('pointerup', (e) => this.up(e));
     surface.addEventListener('pointercancel', (e) => this.up(e, true));
     surface.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    // iOS: a drag that lingers can start a text selection and show the
+    // magnifier loupe, even with user-select: none. Cancelling the touch
+    // events themselves stops that; pointer events still fire.
+    const stop = (e) => { if (e.cancelable) e.preventDefault(); };
+    surface.addEventListener('touchstart', stop, { passive: false });
+    surface.addEventListener('touchmove', stop, { passive: false });
+    surface.addEventListener('touchend', stop, { passive: false });
+    document.addEventListener('selectstart', (e) => {
+      if (!/INPUT|TEXTAREA/.test(e.target.tagName || '')) e.preventDefault();
+    });
   }
 
   releaseAll() {
@@ -129,7 +140,9 @@ export class Input {
     g.trail.push({ x: e.clientX, y: e.clientY, t: now });
     while (g.trail.length > 2 && now - g.trail[0].t > 90) g.trail.shift();
 
-    const step = this.cellSize() * 0.85;
+    // Tie steps to the cell size so the piece tracks the finger, but not so
+    // small that a wide, zoomed-out field becomes twitchy.
+    const step = Math.max(12, this.cellSize() * 0.85);
     const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
     if (!g.axis && Math.hypot(dx, dy) > 10) g.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
     if (g.axis === 'x') {
@@ -156,7 +169,7 @@ export class Input {
     const vt = Math.max(1, now - first.t);
     const vy = (e.clientY - first.y) / vt;   // px per ms
     const vx = (e.clientX - first.x) / vt;
-    const cell = this.cellSize();
+    const cell = Math.max(14, this.cellSize());
 
     if (vy > 1.1 && Math.abs(vy) > Math.abs(vx) * 1.5 && dy > cell) {
       this.on('hardDrop');

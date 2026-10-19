@@ -1,25 +1,22 @@
-// Canvas renderer. Owns the camera.
+// Canvas renderer.
 //
-// World units are cells. The walls sit at column -1 and column `width`. The
-// viewport shows at most MAX_VIEW_COLS columns (walls included). While the
-// whole field fits it is centred; once it doesn't, the camera pans to keep
-// the falling piece away from the viewport edges (a dead-zone follow).
+// World units are cells. The walls sit at column -1 and column `width`.
+// The whole field is always visible: when it widens, the view zooms out
+// (smoothly) so the field plus both walls fit the screen.
 
-import { HIDDEN, ROWS, VISIBLE, CLEAR_DELAY, LOCK_DELAY, shapeCells, shapeSize } from './core.js';
+import { HIDDEN, ROWS, VISIBLE, CLEAR_DELAY, LOCK_DELAY, shapeCells } from './core.js';
 import { painterFor } from './themes/index.js';
 
-export const MAX_VIEW_COLS = 16;
-const MIN_VIEW_COLS = 12;       // a 10-wide field plus two walls always fits
-const CAM_RATE = 9;             // higher = snappier camera
+const MIN_COLS = 12;            // never zoom in past a 10-wide field + walls
 const WALL_ANIM_MS = 520;
+const ROWS_TALL = VISIBLE + 1 + 1 + 0.3;   // peek row + field + floor + gap
 
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.theme = null;
-    this.camX = null;
-    this.camTarget = null;
+    this.zoomCols = null;       // columns on screen (walls included), animated
     this.wallAnim = 0;          // 1 -> 0 while the walls slide out
     this.particles = [];
     this.shake = 0;
@@ -41,57 +38,35 @@ export class Renderer {
     this.h = Math.max(1, r.height);
     this.canvas.width = Math.round(this.w * dpr);
     this.canvas.height = Math.round(this.h * dpr);
+    this.layout(this.zoomCols ? this.zoomCols - 2 : 10);
+  }
 
-    // Vertical budget: minimap strip + one peek row above the field + the
-    // visible rows + the floor.
-    const mmFrac = 0.45;
-    const rowsTall = VISIBLE + 1 + 1 + mmFrac + 0.4;
-    this.cell = Math.max(8, Math.floor(Math.min(this.h / rowsTall, this.w / MIN_VIEW_COLS)));
-    this.viewCols = Math.max(MIN_VIEW_COLS, Math.min(MAX_VIEW_COLS, Math.floor(this.w / this.cell)));
-    this.vpW = this.viewCols * this.cell;
-    this.x0 = Math.floor((this.w - this.vpW) / 2);
-    this.mmH = Math.max(6, Math.round(this.cell * mmFrac));
-    const usedH = (VISIBLE + 2) * this.cell + this.mmH + Math.round(this.cell * 0.4);
-    this.yMm = Math.max(0, Math.floor((this.h - usedH) / 2));
-    this.top = this.yMm + this.mmH + Math.round(this.cell * 0.4); // top of the peek row
+  // Cell size from the (animated) number of columns on screen. The field is
+  // centred on its middle column, so when the board grows by a column on
+  // each side, existing blocks stay put and only the scale changes.
+  layout(width) {
+    const cols = Math.max(MIN_COLS, this.zoomCols ?? width + 2);
+    this.cell = Math.max(4, Math.floor(Math.min(this.h / ROWS_TALL, this.w / cols)));
+    this.cx = Math.round(this.w / 2);
+    this.width = width;
+    const fieldH = ROWS_TALL * this.cell;
+    // Hug the top (under the HUD) once zoomed out; spare room goes below,
+    // where thumbs are anyway.
+    this.top = Math.round(Math.min((this.h - fieldH) / 2, 8) + this.cell * 0.3);
+  }
+
+  // The zoom follows the walls: while they slide out, the visible span is
+  // width + 2 - 2 * (slide still to go), so they meet the screen edges just
+  // as the slide ends.
+  updateZoom(game) {
+    this.zoomCols = game.width + 2 - 2 * easeOut(this.wallAnim);
+    this.layout(game.width);
   }
 
   // ---- coordinates -----------------------------------------------------------
 
-  sx(col) { return this.x0 + (col - this.camX) * this.cell; }
+  sx(col) { return this.cx + (col - this.width / 2) * this.cell; }
   sy(row) { return this.top + (row - (HIDDEN - 1)) * this.cell; }
-
-  // ---- camera ----------------------------------------------------------------
-
-  centredCam(width) {
-    return -1 - (this.viewCols - (width + 2)) / 2;
-  }
-
-  updateCamera(game, dt) {
-    const W = game.width;
-    const V = this.viewCols;
-    let target;
-    if (W + 2 <= V) {
-      target = this.centredCam(W);
-    } else {
-      target = this.camTarget ?? this.centredCam(W);
-      const p = game.piece;
-      if (p) {
-        const cells = shapeCells(p.type, p.rot);
-        const left = p.x + Math.min(...cells.map((c) => c[0]));
-        const right = p.x + Math.max(...cells.map((c) => c[0])) + 1;
-        const margin = Math.min(4, Math.floor(V * 0.28));
-        if (left < target + margin) target = left - margin;
-        if (right > target + V - margin) target = right - V + margin;
-      }
-      target = Math.max(-1, Math.min(W + 1 - V, target));
-    }
-    this.camTarget = target;
-    if (this.camX === null) this.camX = target;
-    const k = 1 - Math.exp(-CAM_RATE * dt / 1000);
-    this.camX += (target - this.camX) * k;
-    if (Math.abs(target - this.camX) < 0.001) this.camX = target;
-  }
 
   // ---- events from the game --------------------------------------------------
 
@@ -99,10 +74,8 @@ export class Renderer {
     const c = this.theme.colors;
     switch (e.type) {
       case 'expand':
-        // Columns were re-indexed by +1. Shift the camera the same amount so
-        // nothing jumps, then animate the walls sliding outward.
-        if (this.camX !== null) this.camX += 1;
-        if (this.camTarget !== null) this.camTarget += 1;
+        // Columns were re-indexed by +1 and the field is centred, so nothing
+        // jumps. Slide the walls out while the view zooms out.
         this.wallAnim = 1;
         for (let y = HIDDEN; y <= ROWS; y++) {
           this.burst(-0.5, y + 0.5, c.wallEdge, 3, 0.25);
@@ -153,7 +126,7 @@ export class Renderer {
     const s = this.cell;
     this.t += dt / 1000;
 
-    this.updateCamera(game, dt);
+    this.updateZoom(game);
     this.wallAnim = Math.max(0, this.wallAnim - dt / WALL_ANIM_MS);
     const wa = easeOut(this.wallAnim);
 
@@ -179,12 +152,11 @@ export class Renderer {
     const vpBot = this.sy(ROWS + 1);
     ctx.save();
     ctx.beginPath();
-    ctx.rect(this.x0, vpTop - 2, this.vpW, vpBot - vpTop + 4);
+    ctx.rect(0, vpTop - 2, this.w, vpBot - vpTop + 4);
     ctx.clip();
 
     const W = game.width;
-    const c0 = Math.max(-1, Math.floor(this.camX) - 1);
-    const c1 = Math.min(W, Math.ceil(this.camX + this.viewCols) + 1);
+    const c0 = -1, c1 = W;
 
     // Field background + grid
     const fx0 = this.sx(0), fx1 = this.sx(W);
@@ -200,7 +172,7 @@ export class Renderer {
     }
     for (let y = HIDDEN; y <= ROWS; y++) {
       const py = Math.round(this.sy(y)) + 0.5;
-      ctx.moveTo(Math.max(fx0, this.x0), py); ctx.lineTo(Math.min(fx1, this.x0 + this.vpW), py);
+      ctx.moveTo(fx0, py); ctx.lineTo(fx1, py);
     }
     ctx.stroke();
 
@@ -268,17 +240,8 @@ export class Renderer {
     // Particles (world space)
     this.drawParticles(ctx, dt);
 
-    // Edge fades hint that the field continues off-screen.
-    if (W + 2 > this.viewCols) {
-      const fw = s * 1.2;
-      if (this.camX > -1 + 0.05) this.edgeFade(this.x0, vpTop, fw, vpBot - vpTop, 1);
-      if (this.camX + this.viewCols < W + 1 - 0.05) {
-        this.edgeFade(this.x0 + this.vpW - fw, vpTop, fw, vpBot - vpTop, -1);
-      }
-    }
     ctx.restore(); // clip
 
-    this.drawMinimap(game);
     ctx.restore(); // shake
 
     if (this.flash > 0.01) {
@@ -305,15 +268,6 @@ export class Renderer {
     ctx.globalAlpha = 1;
   }
 
-  edgeFade(x, y, w, h, dir) {
-    const ctx = this.ctx;
-    const g = ctx.createLinearGradient(dir > 0 ? x : x + w, 0, dir > 0 ? x + w : x, 0);
-    g.addColorStop(0, hexA(this.theme.colors.bg, 0.85));
-    g.addColorStop(1, hexA(this.theme.colors.bg, 0));
-    ctx.fillStyle = g;
-    ctx.fillRect(x, y, w, h);
-  }
-
   drawParticles(ctx, dt) {
     const s = this.cell, k = dt / 1000;
     for (let i = this.particles.length - 1; i >= 0; i--) {
@@ -329,33 +283,6 @@ export class Renderer {
       ctx.fillRect(this.sx(p.x) - z / 2, this.sy(p.y) - z / 2, z, z);
     }
     ctx.globalAlpha = 1;
-  }
-
-  // The whole field squashed into a strip, with the viewport marked. Only
-  // shown once the field is wider than the screen.
-  drawMinimap(game) {
-    const W = game.width;
-    if (W + 2 <= this.viewCols && this.wallAnim === 0) return;
-    const ctx = this.ctx, col = this.theme.colors;
-    const x = this.x0, y = this.yMm, w = this.vpW, h = this.mmH;
-    const cw = w / (W + 2);
-    ctx.fillStyle = hexA(col.text, 0.08);
-    ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = hexA(col.text, 0.55);
-    for (let c = 0; c < W; c++) {
-      let top = ROWS;
-      for (let r = 0; r < ROWS; r++) if (game.board[r][c]) { top = r; break; }
-      const hgt = ((ROWS - top) / VISIBLE) * h;
-      if (hgt > 0) ctx.fillRect(x + (c + 1) * cw, y + h - hgt, Math.max(1, cw - 0.5), hgt);
-    }
-    if (game.piece) {
-      const n = shapeSize(game.piece.type);
-      ctx.fillStyle = this.theme.pieces[game.piece.type];
-      ctx.fillRect(x + (game.piece.x + 1) * cw, y, n * cw, Math.max(2, h * 0.25));
-    }
-    ctx.strokeStyle = col.accent;
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(x + (this.camX + 1) * cw + 0.75, y + 0.75, this.viewCols * cw - 1.5, h - 1.5);
   }
 }
 
@@ -388,12 +315,4 @@ export function drawPreview(canvas, type, theme, dim = false) {
 function easeOut(t) {
   // t runs 1 -> 0; return how far from "done" we still are, eased.
   return t * t * t;
-}
-
-function hexA(color, a) {
-  if (color.startsWith('#') && color.length === 7) {
-    const n = parseInt(color.slice(1), 16);
-    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
-  }
-  return color;
 }

@@ -14,7 +14,12 @@
   --safe-r: env(safe-area-inset-right, 0px);
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
 
 html, body {
   margin: 0;
@@ -109,7 +114,7 @@ html, body {
 /* Wide screens: hold + stats on the left, next on the right. */
 @media (min-aspect-ratio: 1/1) and (min-width: 640px) {
   #app {
-    grid-template-columns: 1fr min(calc((100dvh - 24px) * 0.66), 58vw) 1fr;
+    grid-template-columns: minmax(170px, 1fr) minmax(0, 3fr) minmax(170px, 1fr);
     grid-template-rows: 1fr;
     grid-template-areas: "left stage right";
     gap: 16px;
@@ -149,7 +154,7 @@ html, body {
   animation: toast 1.4s ease-out forwards;
 }
 .toast.small { font-size: clamp(14px, 3.6vmin, 22px); color: var(--text); text-shadow: 0 2px 0 rgba(0,0,0,0.35); }
-.toast.big { font-size: clamp(30px, 10vmin, 64px); }
+.toast.big { font-size: clamp(26px, 8.5vw, 64px); }
 @keyframes toast {
   0% { transform: scale(0.6); opacity: 0; }
   12% { transform: scale(1.12); opacity: 1; }
