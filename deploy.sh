@@ -24,6 +24,9 @@ fi
 
 if [ "${1:-}" = "--push" ]; then
   git add -A
-  git commit -q -m "${2:-Deploy $BUILD}" && git push -q origin main
+  git commit -q -m "${2:-Deploy $BUILD}"
+  # GitHub sometimes commits too (e.g. the CNAME file when the Pages domain
+  # is changed in settings), so rebase onto it first.
+  git pull -q --rebase origin main && git push -q origin main
   echo "pushed; GitHub Pages republishes in about a minute"
 fi
