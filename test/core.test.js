@@ -123,6 +123,14 @@ test('widening also adds rows at the top, keeping a 1:2 field', () => {
   assert.equal(g.board[g.rows - 1][0], 'O');
 });
 
+test('a wider start is taller by the same rule', () => {
+  const g = new Game({ seed: 15, width: 20 });
+  assert.equal(g.visible, 40);
+  assert.equal(g.board.length, 42);
+  assert.equal(g.board[0].length, 20);
+  assert.equal(g.startWidth, 20);
+});
+
 test('rows never shrink', () => {
   const g = new Game({ seed: 14 });
   g.growTo(30);

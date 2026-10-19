@@ -123,6 +123,20 @@ for (const theme of ['gameboy', 'neon', 'paper']) {
   });
 }
 
+await run('start-width', { width: 390, height: 844 }, async (page) => {
+  check(!(await page.isVisible('#menu .credits')), 'credits hidden until asked for');
+  await page.click('[data-act=credits]');
+  check(await page.isVisible('#menu .credits'), 'Credits link reveals them');
+  check((await page.locator('#menu details').count()) === 0, 'no How to play section');
+  await page.click('#menu .chip:text-is("20")');
+  await page.screenshot({ path: 'shots/phone-menu.png' });
+  await page.click('[data-act=play]');
+  await page.waitForTimeout(300);
+  const g = await page.evaluate(() => ({ w: window.xt.game.width, v: window.xt.game.visible }));
+  check(g.w === 20 && g.v === 40, `start width 20 -> 20 x 40 field (got ${g.w} x ${g.v})`);
+  await page.screenshot({ path: 'shots/phone-start20.png' });
+});
+
 await run('landscape', { width: 844, height: 390 }, async (page) => {
   await page.click('[data-act=play]');
   await page.waitForTimeout(300);

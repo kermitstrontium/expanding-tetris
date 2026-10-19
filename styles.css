@@ -275,3 +275,15 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
   #next { gap: 2px; }
   .icon-btn { height: 36px; }
 }
+
+.credits-link {
+  align-self: center;
+  border: 0;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--muted);
+  background: transparent;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.credits[hidden] { display: none; }

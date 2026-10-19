@@ -18,6 +18,7 @@ const defaults = {
   musicVol: 0.6,
   sfxVol: 0.7,
   level: 1,
+  startWidth: 10,
   best: [],           // [{ score, lines, width, date }]
 };
 
@@ -130,6 +131,8 @@ function buildSettings(el, { showLevel }) {
   if (showLevel) {
     el.appendChild(chips('Start level', [1, 5, 10, 15].map((n) => ({ id: n, name: String(n) })),
       settings.level, (n) => { settings.level = n; save(); }));
+    el.appendChild(chips('Start width', [10, 14, 20, 30].map((n) => ({ id: n, name: String(n) })),
+      settings.startWidth, (n) => { settings.startWidth = n; save(); }));
   }
   el.appendChild(slider('Music', settings.musicVol, (v) => { settings.musicVol = v; audio.setMusicVolume(v); save(); }));
   el.appendChild(slider('Effects', settings.sfxVol, (v) => {
@@ -141,7 +144,7 @@ function renderBest() {
   const el = $('#menu .best');
   if (!settings.best.length) { el.innerHTML = ''; return; }
   el.innerHTML = '<span class="label">Best</span><ol>' + settings.best.slice(0, 5).map((b) =>
-    `<li>${b.score.toLocaleString()} <span class="muted">· ${b.lines} lines · width ${b.width}</span></li>`).join('') + '</ol>';
+    `<li>${b.score.toLocaleString()} <span class="muted">· ${b.lines} lines · width ${b.start && b.start !== 10 ? b.start + '→' : ''}${b.width}</span></li>`).join('') + '</ol>';
 }
 
 function renderCredits() {
@@ -165,7 +168,7 @@ function openMenu() {
 
 function newGame() {
   audio.unlock();
-  game = new Game({ level: settings.level });
+  game = new Game({ level: settings.level, width: settings.startWidth });
   renderer.wallAnim = 0;
   renderer.particles.length = 0;
   mode = 'playing';
@@ -204,7 +207,7 @@ function gameOver(e) {
   input.enabled = false;
   audio.stop();
   audio.sfx('gameover');
-  const entry = { score: e.score, lines: e.lines, width: e.width, date: Date.now() };
+  const entry = { score: e.score, lines: e.lines, width: e.width, start: game.startWidth, date: Date.now() };
   const best = settings.best.slice();
   best.push(entry);
   best.sort((a, b) => b.score - a.score);
@@ -229,6 +232,7 @@ document.addEventListener('click', (e) => {
   if (a === 'play' || a === 'restart') newGame();
   else if (a === 'resume') resume();
   else if (a === 'quit') { audio.stop(); openMenu(); }
+  else if (a === 'credits') { const c = $('#menu .credits'); c.hidden = !c.hidden; }
 });
 $('#pauseBtn').addEventListener('click', () => (mode === 'paused' ? resume() : pause()));
 document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });

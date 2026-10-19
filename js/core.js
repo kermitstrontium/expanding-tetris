@@ -104,9 +104,11 @@ export function mulberry32(seed) {
 export class Game {
   constructor(opts = {}) {
     this.width = opts.width ?? START_WIDTH;
+    this.startWidth = this.width;
     this.startLevel = opts.level ?? 1;
-    this.visible = VISIBLE;
     this.grow = opts.grow ?? true;         // tests can turn height growth off
+    // A wider start is taller too, by the same 1:2 rule.
+    this.visible = this.grow ? Math.max(VISIBLE, this.width * ROWS_PER_COL) : VISIBLE;
     this.rand = mulberry32(opts.seed ?? (Math.random() * 2 ** 32) >>> 0);
     this.board = [];
     for (let y = 0; y < this.rows; y++) this.board.push(new Array(this.width).fill(null));
