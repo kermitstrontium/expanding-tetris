@@ -173,6 +173,13 @@ export class Renderer {
     const fy0 = this.sy(HIDDEN), fy1 = this.sy(game.rows);
     ctx.fillStyle = col.field;
     ctx.fillRect(fx0, fy0, fx1 - fx0, fy1 - fy0);
+    // The spawn row (top hidden row) sits inside the walls too, a little
+    // darker, so new pieces appear inside the well rather than above it.
+    // Purely visual: the rules are unchanged.
+    const wy0 = this.sy(HIDDEN - 1);
+    ctx.globalAlpha = 0.45;
+    ctx.fillRect(fx0, wy0, fx1 - fx0, fy0 - wy0);
+    ctx.globalAlpha = 1;
     ctx.strokeStyle = col.grid;
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -190,8 +197,8 @@ export class Renderer {
     if (wa > 0) {
       ctx.fillStyle = col.wall;
       ctx.globalAlpha = wa;
-      ctx.fillRect(this.sx(0), fy0, s, fy1 - fy0);
-      ctx.fillRect(this.sx(W - 1), fy0, s, fy1 - fy0);
+      ctx.fillRect(this.sx(0), wy0, s, fy1 - wy0);
+      ctx.fillRect(this.sx(W - 1), wy0, s, fy1 - wy0);
       ctx.globalAlpha = 1;
     }
 
@@ -240,8 +247,8 @@ export class Renderer {
 
     // Walls and floor (drawn after cells so the slide covers new columns)
     const lw = this.sx(-1 + wa), rw = this.sx(W - wa);
-    this.drawWall(lw, fy0, s, fy1 - fy0 + s);
-    this.drawWall(rw, fy0, s, fy1 - fy0 + s);
+    this.drawWall(lw, wy0, s, fy1 - wy0 + s);
+    this.drawWall(rw, wy0, s, fy1 - wy0 + s);
     ctx.fillStyle = col.wall;
     ctx.fillRect(lw, fy1, rw - lw + s, s);
     ctx.fillStyle = col.wallEdge;
