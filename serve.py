@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Sprawl static host.
+Expanding Tetris static host.
 
 A dependency-free static file server.
 
@@ -76,7 +76,7 @@ def main():
     socketserver.TCPServer.allow_reuse_address = True
     handler = functools.partial(Handler, directory=HERE)
     with socketserver.ThreadingTCPServer((args.bind, args.port), handler) as httpd:
-        print("Sprawl serving %s" % HERE)
+        print("Expanding Tetris serving %s" % HERE)
         print("  local :  http://127.0.0.1:%d/" % args.port)
         print("  lan   :  http://%s:%d/" % (lan_ip(), args.port))
         print("  Ctrl-C to stop")

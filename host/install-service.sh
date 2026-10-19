@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Install Sprawl as a supervised systemd user unit and expose it on the
+# Install Expanding Tetris as a supervised systemd user unit and expose it on the
 # tailnet only:  https://frozen-wsl.tail50be60.ts.net:9447/
 # Idempotent. Never uses funnel.
 set -euo pipefail
 
-DIR="$HOME/ai-share/sprawl"
+DIR="$HOME/ai-share/expanding-tetris"
 PORT=8091
 HTTPS_PORT=9447
-UNIT=sprawl.service
+UNIT=expanding-tetris.service
 UNIT_DIR="$HOME/.config/systemd/user"
 FQDN="frozen-wsl.tail50be60.ts.net"
 

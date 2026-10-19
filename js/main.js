@@ -8,7 +8,7 @@ import { THEMES, getTheme } from './themes/index.js';
 import { TRACKS } from './music/tracks.js';
 
 const $ = (s, el = document) => el.querySelector(s);
-const STORE = 'sprawl.v1';
+const STORE = 'expanding-tetris.v1';
 
 // ---- settings ----------------------------------------------------------------
 
@@ -22,7 +22,8 @@ const defaults = {
 };
 
 function load() {
-  try { return { ...defaults, ...JSON.parse(localStorage.getItem(STORE) || '{}') }; }
+  // 'sprawl.v1' was the working title; carry its scores over once.
+  try { return { ...defaults, ...JSON.parse(localStorage.getItem(STORE) || localStorage.getItem('sprawl.v1') || '{}') }; }
   catch { return { ...defaults }; }
 }
 const settings = load();
@@ -392,4 +393,4 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 }
 
 // For tests and debugging in the console.
-window.sprawl = { get game() { return game; }, renderer, audio, settings, newGame };
+window.xt = { get game() { return game; }, renderer, audio, settings, newGame };

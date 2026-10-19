@@ -1,6 +1,6 @@
 // Korobeiniki ("The Peddlers"). Russian folk song, poem by Nikolay Nekrasov
 // (1861). Public domain. This arrangement is ours.
-import { seq, octaveBass, join } from './notation.js';
+import { seq, octaveBass, join, drums } from './notation.js';
 
 const A_LEAD = seq(`
   E5:1 B4:.5 C5:.5 D5:1 C5:.5 B4:.5
@@ -43,16 +43,6 @@ const B_HARM = seq(`
 const B_BASS = octaveBass([
   'A2', 'G#2', 'A2', 'E2', 'A2', 'G#2', 'A2', 'E2',
 ]);
-
-// Snare-ish noise on 2 and 4, kick on 1 and 3. midi field = drum id.
-function drums(bars) {
-  const out = [];
-  for (let b = 0; b < bars; b++) {
-    out.push([b * 4, 0.25, 0], [b * 4 + 1, 0.25, 1], [b * 4 + 2, 0.25, 0], [b * 4 + 3, 0.25, 1]);
-    for (let e = 0; e < 8; e++) out.push([b * 4 + e / 2 + 0.25, 0.1, 2]);
-  }
-  return out;
-}
 
 const A = { len: 32, voices: [A_LEAD, A_HARM, A_BASS, drums(8)] };
 const B = { len: 32, voices: [B_LEAD, B_HARM, B_BASS, drums(8)] };

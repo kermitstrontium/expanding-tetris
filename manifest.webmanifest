@@ -1,6 +1,6 @@
 {
-  "name": "Sprawl",
-  "short_name": "Sprawl",
+  "name": "Expanding Tetris",
+  "short_name": "Exp. Tetris",
   "description": "Falling blocks where every four-line clear widens the field.",
   "start_url": "./",
   "scope": "./",

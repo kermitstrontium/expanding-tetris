@@ -197,6 +197,14 @@ html, body {
   color: var(--accent);
   line-height: 1;
 }
+.logo small {
+  display: block;
+  font-size: 0.3em;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  margin: 0 0 0.12em 0.42em;
+  color: var(--text);
+}
 .tag { margin: 0 0 6px; text-align: center; color: var(--muted); }
 h2 { margin: 0 0 4px; text-align: center; }
 

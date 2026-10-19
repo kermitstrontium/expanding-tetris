@@ -59,3 +59,14 @@ export function octaveBass(roots, beatsPerBar = 4) {
   });
   return out;
 }
+
+// Simple backbeat: kick on 1 and 3, snare on 2 and 4, off-beat hats.
+// midi field = drum id (0 kick, 1 snare, 2 hat).
+export function drums(bars) {
+  const out = [];
+  for (let b = 0; b < bars; b++) {
+    out.push([b * 4, 0.25, 0], [b * 4 + 1, 0.25, 1], [b * 4 + 2, 0.25, 0], [b * 4 + 3, 0.25, 1]);
+    for (let e = 0; e < 8; e++) out.push([b * 4 + e / 2 + 0.25, 0.1, 2]);
+  }
+  return out;
+}

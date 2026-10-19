@@ -1,4 +1,4 @@
-// Sprawl: game rules. Pure logic, no DOM, so it runs under Node for tests.
+// Expanding Tetris: game rules. Pure logic, no DOM, so it runs under Node for tests.
 //
 // The twist: clearing four lines at once (a "tetris") adds one empty column
 // to each side of the field. The field never shrinks.

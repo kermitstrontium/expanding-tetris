@@ -10,7 +10,7 @@ node test/core.test.js
 
 BUILD="$(date -u +%Y%m%d-%H%M%S)"
 sed -i -E "s/^const BUILD = '[^']*';/const BUILD = '$BUILD';/" sw.js
-sed -i -E "s/(name=\"sprawl-build\" content=\")[^\"]*\"/\1$BUILD\"/" index.html
+sed -i -E "s/(name=\"et-build\" content=\")[^\"]*\"/\1$BUILD\"/" index.html
 grep -q "$BUILD" sw.js && grep -q "$BUILD" index.html || { echo "stamp failed" >&2; exit 1; }
 echo "build $BUILD"
 

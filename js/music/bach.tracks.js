@@ -26,11 +26,11 @@ export const typeC = {
   ],
 };
 
-// Gavotte from the same suite stands in for "B" (see README for why).
+// Gavotte from the same suite: a bonus track.
 const g = mv('gavotte');
 
-export const typeB = {
-  id: 'b',
+export const gavotte = {
+  id: 'd',
   title: 'Gavotte',
   credit: 'J. S. Bach, French Suite No. 3, BWV 814. Public domain.',
   bpm: 176,

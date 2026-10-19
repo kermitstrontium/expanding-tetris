@@ -1,4 +1,4 @@
-# Sprawl
+# Expanding Tetris
 
 A falling-blocks game with one twist: **every four-line clear (a "tetris")
 pushes both walls out by one column.** The field starts 10 wide and keeps
@@ -8,6 +8,7 @@ piece, and a strip at the top shows the whole stack.
 Installable PWA, works offline, no build step, no dependencies.
 
 Live (tailnet only): **https://frozen-wsl.tail50be60.ts.net:9447/**
+Repo (private): https://github.com/kermitstrontium/expanding-tetris
 To install on iPhone, open it in Safari, tap Share, then Add to Home Screen.
 
 ## Layout
@@ -25,7 +26,7 @@ js/music/                   one file per tune + tracks.js registry
 sw.js                       service worker (network-first, offline fallback)
 serve.py                    static server, no-store caching
 host/                       systemd unit + install script
-tools/                      icon generator, Bach MIDI extractor
+tools/                      icon generator, MIDI -> note-data extractors
 test/                       node rules tests + headless browser test
 ```
 
@@ -47,29 +48,28 @@ for an animated backdrop (Neon does this) and a default `music` track.
 A track is `{ id, title, credit, bpm, len, voices }`. Each voice is
 `{ wave, gain, notes }`, and each note is `[beat, beats, midiNote]`. Write
 tunes by hand with `seq('E5:1 B4:.5 C5:.5 r:1')` from `js/music/notation.js`
-(see `korobeiniki.js`), or generate them from MIDI (see
-`tools/extract_bach.py`). Register the track in `js/music/tracks.js`.
+(see `korobeiniki.js`), or generate them from MIDI with
+`tools/extract_midi.py` (see `typeb.js`). Register the track in `js/music/tracks.js`.
 Waves: `pulse50`, `pulse25`, `pulse12`, `triangle`, `sawtooth`, `sine`, and
 `drums` (note 0 = kick, 1 = snare, 2 = hat).
 
 The music speeds up with level, and again when the stack passes 14 rows.
 
-## Music and licensing
+## Music
 
-| | Piece | Status |
+| | Piece | Source |
 |---|---|---|
-| A | *Korobeiniki*, Russian folk song (1861) | Public domain. Arranged by hand here. |
-| B | *Gavotte*, Bach, French Suite No. 3, BWV 814 | Public domain. Stands in for the original "Type B". |
-| C | *Menuet & Trio*, Bach, French Suite No. 3, BWV 814 | Public domain. Same movement the Game Boy used. |
+| A | *Korobeiniki*, Russian folk song (1861) | Public domain. Arranged by hand, checked against a Game Boy transcription. |
+| B | *Type B*, Hirokazu Tanaka (Nintendo, 1989) | **Copyrighted.** Fan rendition from a fan MIDI transcription, for private use. |
+| C | *Menuet & Trio*, Bach, French Suite No. 3, BWV 814 | Public domain. Notes from the Mutopia Project MIDI. |
+| D | *Gavotte*, same suite | Public domain. Bonus track. |
 
-The Game Boy's **Type B is not public domain.** Hirokazu Tanaka wrote it for
-Nintendo in 1989, so it isn't included.
+All arrangements are chiptune voices synthesised live; there are no audio files.
 
-The Bach note data comes from the Mutopia Project MIDI files. Only the
-pitches and timings were taken; those are Bach's.
-
-"Tetris" is a trademark of The Tetris Company, which is why this game is
-called something else. It's for personal, tailnet-only use.
+**Keep this private.** Type B and the name "Tetris" (a trademark of The
+Tetris Company) are fine for a personal, tailnet-only game. Neither is fine
+to publish. The GitHub repo is private for that reason. To make it public,
+first remove `js/music/typeb*.js` and rename the game.
 
 ## Controls
 
@@ -103,4 +103,4 @@ new code when the bytes of `sw.js` change, and the stamp is what changes them.
 
 Production chain: `https://frozen-wsl.tail50be60.ts.net:9447` →
 `tailscale serve --https=9447` → `127.0.0.1:8091` → `serve.py`
-(`sprawl.service`, systemd user unit, `Restart=always`).
+(`expanding-tetris.service`, systemd user unit, `Restart=always`).
