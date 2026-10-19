@@ -3,12 +3,19 @@
 // The twist: clearing four lines at once (a "tetris") adds one empty column
 // to each side of the field. The field never shrinks.
 //
+// It can also grow taller: if the game is given a rowsFor(width) callback,
+// each widening adds empty rows at the top up to that many visible rows, so
+// the field keeps filling the screen instead of shrinking to a strip.
+//
 // Coordinates: x = column (0 = leftmost), y = row (0 = top). The board has
-// HIDDEN rows above the VISIBLE ones; pieces spawn in the hidden rows.
+// HIDDEN rows above the visible ones; pieces spawn in the hidden rows.
+// game.rows / game.visible are the current sizes; ROWS / VISIBLE below are
+// only the starting sizes.
 
 export const VISIBLE = 20;
 export const HIDDEN = 2;
 export const ROWS = VISIBLE + HIDDEN;
+export const MAX_VISIBLE = 100;
 export const START_WIDTH = 10;
 export const MAX_WIDTH = 200;          // sanity cap; nobody gets here
 export const LINES_PER_LEVEL = 10;
@@ -96,9 +103,11 @@ export class Game {
   constructor(opts = {}) {
     this.width = opts.width ?? START_WIDTH;
     this.startLevel = opts.level ?? 1;
+    this.visible = VISIBLE;
+    this.rowsFor = opts.rowsFor || null;   // (width) => visible rows wanted
     this.rand = mulberry32(opts.seed ?? (Math.random() * 2 ** 32) >>> 0);
     this.board = [];
-    for (let y = 0; y < ROWS; y++) this.board.push(new Array(this.width).fill(null));
+    for (let y = 0; y < this.rows; y++) this.board.push(new Array(this.width).fill(null));
     this.bag = [];
     this.queue = [];
     this.hold = null;
@@ -121,6 +130,10 @@ export class Game {
     this.events = [];
     this.refillQueue();
     this.spawn();
+  }
+
+  get rows() {
+    return this.visible + HIDDEN;
   }
 
   get level() {
@@ -179,7 +192,7 @@ export class Game {
 
   collides(p, dx = 0, dy = 0, rot = p.rot) {
     for (const [x, y] of this.cells(p, dx, dy, rot)) {
-      if (x < 0 || x >= this.width || y >= ROWS) return true;
+      if (x < 0 || x >= this.width || y >= this.rows) return true;
       if (y >= 0 && this.board[y][x]) return true;
     }
     return false;
@@ -294,7 +307,7 @@ export class Game {
       return;
     }
     const full = [];
-    for (let y = 0; y < ROWS; y++) if (this.board[y].every(Boolean)) full.push(y);
+    for (let y = 0; y < this.rows; y++) if (this.board[y].every(Boolean)) full.push(y);
     if (full.length) {
       this.clearing = { rows: full, t: 0 };
       this.emit('clear', { rows: full, count: full.length, width: this.width });
@@ -309,7 +322,7 @@ export class Game {
     const n = rows.length;
     this.clearing = null;
     const keep = this.board.filter((_, y) => !rows.includes(y));
-    while (keep.length < ROWS) keep.unshift(new Array(this.width).fill(null));
+    while (keep.length < this.rows) keep.unshift(new Array(this.width).fill(null));
     this.board = keep;
 
     const before = this.level;
@@ -340,7 +353,19 @@ export class Game {
     }
     this.width += 2;
     this.expansions++;
-    this.emit('expand', { width: this.width });
+    const prevVisible = this.visible;
+    if (this.rowsFor) this.growTo(this.rowsFor(this.width));
+    this.emit('expand', { width: this.width, visible: this.visible, prevVisible });
+  }
+
+  // Add empty rows at the top until `visible` rows are showing. Never
+  // shrinks, so nothing on the board is ever lost.
+  growTo(visible) {
+    const target = Math.min(MAX_VISIBLE, Math.floor(visible));
+    while (this.visible < target) {
+      this.board.unshift(new Array(this.width).fill(null));
+      this.visible++;
+    }
   }
 
   gameOver(reason) {
@@ -351,7 +376,7 @@ export class Game {
 
   // Height of the stack in rows (0 = empty). Used for the "danger" music.
   stackHeight() {
-    for (let y = 0; y < ROWS; y++) if (this.board[y].some(Boolean)) return ROWS - y;
+    for (let y = 0; y < this.rows; y++) if (this.board[y].some(Boolean)) return this.rows - y;
     return 0;
   }
 

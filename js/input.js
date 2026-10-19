@@ -11,6 +11,9 @@
 //   two-finger tap     rotate anticlockwise
 
 const DAS = 150;  // ms before auto-repeat starts
+const SLOW_STEP = 22;   // px of slow drag per column
+const FAST_MIN = 7;     // px per column at full swipe speed, at least
+const lerp = (a, b, t) => a + (b - a) * t;
 const ARR = 35;   // ms between repeats
 
 const KEYMAP = {
@@ -114,6 +117,8 @@ export class Input {
     if (!this.enabled) return;
     e.preventDefault();
     e.currentTarget.setPointerCapture?.(e.pointerId);
+    // A new first finger means any remembered touches are stale.
+    if (e.isPrimary) this.pointers.clear();
     this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (this.pointers.size === 2 && this.gesture) {
       // Second finger: anticlockwise, and the gesture is spent.
@@ -140,19 +145,32 @@ export class Input {
     g.trail.push({ x: e.clientX, y: e.clientY, t: now });
     while (g.trail.length > 2 && now - g.trail[0].t > 90) g.trail.shift();
 
-    // Tie steps to the cell size so the piece tracks the finger, but not so
-    // small that a wide, zoomed-out field becomes twitchy.
-    const step = Math.max(12, this.cellSize() * 0.85);
+    // Pointer acceleration. A slow drag moves one column per SLOW_STEP px
+    // however small the cells are, so a wide zoomed-out field stays precise.
+    // A fast swipe steps per cell (or less), so long trips are still one
+    // flick. Same idea vertically for soft drop on tall fields.
+    const cell = this.cellSize();
+    const v = this.speed(g, now);
+    const fast = Math.min(1, Math.max(0, (v - 0.25) / 1.0));   // 0 slow .. 1 fast (px/ms)
+    const hStep = lerp(Math.max(SLOW_STEP, cell * 0.85), Math.max(FAST_MIN, cell * 0.85), fast);
+    const vStep = lerp(Math.max(SLOW_STEP * 0.7, cell * 0.85), Math.max(4, cell * 0.5), fast);
     const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
     if (!g.axis && Math.hypot(dx, dy) > 10) g.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
     if (g.axis === 'x') {
-      while (e.clientX - g.ax >= step) { g.ax += step; g.moved = true; this.on('right'); }
-      while (g.ax - e.clientX >= step) { g.ax -= step; g.moved = true; this.on('left'); }
+      while (e.clientX - g.ax >= hStep) { g.ax += hStep; g.moved = true; this.on('right'); }
+      while (g.ax - e.clientX >= hStep) { g.ax -= hStep; g.moved = true; this.on('left'); }
     } else if (g.axis === 'y') {
       // Allow sideways correction mid-drop once it's clearly intended.
-      if (Math.abs(e.clientX - g.ax) > step * 1.5) g.axis = 'x';
-      while (e.clientY - g.ay >= step) { g.ay += step; g.moved = true; this.on('softStep'); }
+      if (Math.abs(e.clientX - g.ax) > hStep * 1.5) g.axis = 'x';
+      while (e.clientY - g.ay >= vStep) { g.ay += vStep; g.moved = true; this.on('softStep'); }
     }
+  }
+
+  // Finger speed in px/ms over the last ~90 ms.
+  speed(g, now) {
+    const a = g.trail[0], b = g.trail[g.trail.length - 1];
+    const dt = Math.max(16, now - a.t);
+    return Math.hypot(b.x - a.x, b.y - a.y) / dt;
   }
 
   up(e, cancelled) {

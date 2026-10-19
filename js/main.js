@@ -165,7 +165,8 @@ function openMenu() {
 
 function newGame() {
   audio.unlock();
-  game = new Game({ level: settings.level });
+  // As the field widens it also grows tall enough to keep filling the screen.
+  game = new Game({ level: settings.level, rowsFor: (w) => renderer.fitRows(w) });
   renderer.wallAnim = 0;
   renderer.particles.length = 0;
   mode = 'playing';
@@ -326,7 +327,7 @@ function handleEvents() {
 // Music speeds up with level, and more when the stack nears the top.
 function updateTempo() {
   const lvl = 1 + Math.min(0.3, (game.level - 1) * 0.02);
-  const danger = game.stackHeight() > 14 ? 1.12 : 1;
+  const danger = game.stackHeight() > game.visible * 0.7 ? 1.12 : 1;
   const t = Math.round(lvl * danger * 100) / 100;
   if (t !== audio.tempo) audio.setTempo(t);
 }
@@ -394,4 +395,4 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 }
 
 // For tests and debugging in the console.
-window.xt = { get game() { return game; }, renderer, audio, settings, newGame };
+window.xt = { get game() { return game; }, renderer, audio, input, settings, newGame };

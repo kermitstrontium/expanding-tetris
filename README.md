@@ -3,7 +3,11 @@
 A falling-blocks game with one twist: **every four-line clear (a "tetris")
 pushes both walls out by one column.** The field starts 10 wide and keeps
 growing, and the view zooms out as the walls slide apart so the whole
-field is always on screen.
+field is always on screen. Once zooming out would leave empty space above
+and below, the field also grows **taller** (empty rows at the top), so it
+keeps filling the screen and pieces have longer to travel sideways. How
+tall depends on the screen shape: a phone gains rows from the first
+widening; a desktop only once the field fills the width. Rows never shrink.
 
 Installable PWA, works offline, no build step, no dependencies.
 
@@ -77,7 +81,7 @@ a takedown notice if the site got noticed. If that happens, delete
 
 | Touch | Keys | |
 |---|---|---|
-| drag sideways | ← → / A D | move |
+| drag sideways | ← → / A D | move (slow drag ≈ 22 px per column; fast swipes go further) |
 | tap | ↑ X W | rotate right |
 | two-finger tap | Z Ctrl Q | rotate left |
 | drag down | ↓ S | soft drop |

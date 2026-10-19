@@ -1,15 +1,17 @@
 // Canvas renderer.
 //
 // World units are cells. The walls sit at column -1 and column `width`.
-// The whole field is always visible: when it widens, the view zooms out
-// (smoothly) so the field plus both walls fit the screen.
+// The whole field is always visible. When it widens, the view zooms out so
+// the field plus both walls fit; if the game also grew taller (see
+// fitRows), the new rows fill the height the zoom freed up, so the field
+// keeps the same place on screen. Both animate with the wall slide.
 
-import { HIDDEN, ROWS, VISIBLE, CLEAR_DELAY, LOCK_DELAY, shapeCells } from './core.js';
+import { HIDDEN, VISIBLE, CLEAR_DELAY, LOCK_DELAY, shapeCells } from './core.js';
 import { painterFor } from './themes/index.js';
 
 const MIN_COLS = 12;            // never zoom in past a 10-wide field + walls
 const WALL_ANIM_MS = 520;
-const ROWS_TALL = VISIBLE + 1 + 1 + 0.3;   // peek row + field + floor + gap
+const EXTRA_ROWS = 1 + 1 + 0.3; // peek row above the field + floor + gap
 
 export class Renderer {
   constructor(canvas) {
@@ -17,6 +19,9 @@ export class Renderer {
     this.ctx = canvas.getContext('2d');
     this.theme = null;
     this.zoomCols = null;       // columns on screen (walls included), animated
+    this.visDisp = VISIBLE;     // visible rows on screen, animated
+    this.rowsFrom = VISIBLE;    // visible rows before / after the last growth
+    this.rowsTo = VISIBLE;
     this.wallAnim = 0;          // 1 -> 0 while the walls slide out
     this.particles = [];
     this.shake = 0;
@@ -38,35 +43,47 @@ export class Renderer {
     this.h = Math.max(1, r.height);
     this.canvas.width = Math.round(this.w * dpr);
     this.canvas.height = Math.round(this.h * dpr);
-    this.layout(this.zoomCols ? this.zoomCols - 2 : 10);
+    this.layout(this.width ?? 10, this.visDisp, this.visDisp + HIDDEN);
   }
 
-  // Cell size from the (animated) number of columns on screen. The field is
+  // How many visible rows fill the screen once the field is `width` wide.
+  // A 10-wide field gets the standard 20; wider fields that have to zoom
+  // out get as many as fit the freed-up height. The game calls this.
+  fitRows(width) {
+    const cell = Math.min(this.w / Math.max(MIN_COLS, width + 2), this.h / (VISIBLE + EXTRA_ROWS));
+    return Math.max(VISIBLE, Math.floor(this.h / cell - EXTRA_ROWS + 1e-6));
+  }
+
+  // Cell size from the (animated) columns and rows on screen. The field is
   // centred on its middle column, so when the board grows by a column on
   // each side, existing blocks stay put and only the scale changes.
-  layout(width) {
+  layout(width, visible, rows) {
     const cols = Math.max(MIN_COLS, this.zoomCols ?? width + 2);
-    this.cell = Math.max(4, Math.floor(Math.min(this.h / ROWS_TALL, this.w / cols)));
+    const tall = visible + EXTRA_ROWS;
+    this.cell = Math.max(3, Math.floor(Math.min(this.h / tall, this.w / cols)));
     this.cx = Math.round(this.w / 2);
     this.width = width;
-    const fieldH = ROWS_TALL * this.cell;
-    // Hug the top (under the HUD) once zoomed out; spare room goes below,
-    // where thumbs are anyway.
+    const fieldH = tall * this.cell;
+    // Hug the top (under the HUD); any spare room goes below, where thumbs
+    // are anyway.
     this.top = Math.round(Math.min((this.h - fieldH) / 2, 8) + this.cell * 0.3);
+    this.firstRow = rows - visible - 1;   // the peek row; fractional mid-animation
   }
 
-  // The zoom follows the walls: while they slide out, the visible span is
+  // Everything follows the walls: while they slide out, the visible span is
   // width + 2 - 2 * (slide still to go), so they meet the screen edges just
-  // as the slide ends.
+  // as the slide ends, and the new rows ease in over the same time.
   updateZoom(game) {
-    this.zoomCols = game.width + 2 - 2 * easeOut(this.wallAnim);
-    this.layout(game.width);
+    const k = easeOut(this.wallAnim);
+    this.zoomCols = game.width + 2 - 2 * k;
+    this.visDisp = game.visible - (this.rowsTo - this.rowsFrom) * k;
+    this.layout(game.width, this.visDisp, game.rows);
   }
 
   // ---- coordinates -----------------------------------------------------------
 
   sx(col) { return this.cx + (col - this.width / 2) * this.cell; }
-  sy(row) { return this.top + (row - (HIDDEN - 1)) * this.cell; }
+  sy(row) { return this.top + (row - this.firstRow) * this.cell; }
 
   // ---- events from the game --------------------------------------------------
 
@@ -77,7 +94,9 @@ export class Renderer {
         // Columns were re-indexed by +1 and the field is centred, so nothing
         // jumps. Slide the walls out while the view zooms out.
         this.wallAnim = 1;
-        for (let y = HIDDEN; y <= ROWS; y++) {
+        this.rowsFrom = e.prevVisible ?? game.visible;
+        this.rowsTo = e.visible ?? game.visible;
+        for (let y = game.rows - Math.min(game.visible, 40); y <= game.rows; y++) {
           this.burst(-0.5, y + 0.5, c.wallEdge, 3, 0.25);
           this.burst(game.width + 0.5, y + 0.5, c.wallEdge, 3, 0.25);
         }
@@ -149,7 +168,7 @@ export class Renderer {
 
     // Viewport clip: everything in the world is drawn inside this box.
     const vpTop = this.sy(HIDDEN - 1);
-    const vpBot = this.sy(ROWS + 1);
+    const vpBot = this.sy(game.rows + 1);
     ctx.save();
     ctx.beginPath();
     ctx.rect(0, vpTop - 2, this.w, vpBot - vpTop + 4);
@@ -160,7 +179,7 @@ export class Renderer {
 
     // Field background + grid
     const fx0 = this.sx(0), fx1 = this.sx(W);
-    const fy0 = this.sy(HIDDEN), fy1 = this.sy(ROWS);
+    const fy0 = this.sy(HIDDEN), fy1 = this.sy(game.rows);
     ctx.fillStyle = col.field;
     ctx.fillRect(fx0, fy0, fx1 - fx0, fy1 - fy0);
     ctx.strokeStyle = col.grid;
@@ -170,7 +189,7 @@ export class Renderer {
       const px = Math.round(this.sx(x)) + 0.5;
       ctx.moveTo(px, fy0); ctx.lineTo(px, fy1);
     }
-    for (let y = HIDDEN; y <= ROWS; y++) {
+    for (let y = HIDDEN; y <= game.rows; y++) {
       const py = Math.round(this.sy(y)) + 0.5;
       ctx.moveTo(fx0, py); ctx.lineTo(fx1, py);
     }
@@ -189,7 +208,7 @@ export class Renderer {
     const clearing = game.clearing;
     const clearP = clearing ? clearing.t / CLEAR_DELAY : 0;
     const opts = { ghost: false, flash: 0, theme: th };
-    for (let y = HIDDEN - 1; y < ROWS; y++) {
+    for (let y = HIDDEN - 1; y < game.rows; y++) {
       const row = game.board[y];
       const isClear = clearing && clearing.rows.includes(y);
       for (let x = Math.max(0, c0); x < Math.min(W, c1 + 1); x++) {

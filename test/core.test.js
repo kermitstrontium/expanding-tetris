@@ -101,6 +101,33 @@ test('back-to-back tetrises keep widening and score 1.5x', () => {
   assert.ok(g.score >= 800 + 1200 + 1200);
 });
 
+test('with rowsFor, widening also adds rows at the top', () => {
+  const g = new Game({ seed: 13, rowsFor: (w) => 20 + (w - 10) * 2 });
+  const R0 = g.rows;
+  fillRows(g, [R0 - 4, R0 - 3, R0 - 2, R0 - 1], 9);
+  g.board[R0 - 5][3] = 'T';
+  dropVerticalI(g, 9);
+  g.update(CLEAR_DELAY);
+  assert.equal(g.width, 12);
+  assert.equal(g.visible, 24);
+  assert.equal(g.board.length, g.rows);
+  assert.equal(g.rows, 24 + HIDDEN);
+  // the surviving block is still on the floor, one column right
+  assert.equal(g.board[g.rows - 1][4], 'T');
+  // a hard drop now falls the full, taller field
+  g.piece = { type: 'O', rot: 0, x: 0, y: 1 };
+  g.hardDrop();
+  assert.equal(g.board[g.rows - 1][0], 'O');
+});
+
+test('rows never shrink', () => {
+  const g = new Game({ seed: 14 });
+  g.growTo(30);
+  g.growTo(25);
+  assert.equal(g.visible, 30);
+  assert.equal(g.board.length, 32);
+});
+
 test('pieces can use the new columns', () => {
   const g = new Game({ seed: 7, width: 14 });
   g.piece = { type: 'O', rot: 0, x: 6, y: 1 };
@@ -186,7 +213,7 @@ test('every theme has the required keys', () => {
 });
 
 test('long random play never corrupts the board', () => {
-  const g = new Game({ seed: 12 });
+  const g = new Game({ seed: 12, rowsFor: (w) => 20 + w });
   let steps = 0;
   while (!g.over && steps < 20000) {
     const r = g.rand();
@@ -195,6 +222,7 @@ test('long random play never corrupts the board', () => {
     else if (r < 0.5) g.hardDrop();
     else if (r < 0.52) g.holdPiece();
     g.update(16);
+    assert.equal(g.board.length, g.rows);
     for (const row of g.board) assert.equal(row.length, g.width);
     if (g.piece) assert.ok(!g.collides(g.piece));
     steps++;

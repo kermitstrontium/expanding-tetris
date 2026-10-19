@@ -61,6 +61,41 @@ await run('phone', { width: 390, height: 844 }, async (page) => {
   await page.waitForTimeout(800);
   const st2 = await page.evaluate(() => { const r = window.xt.renderer, g = window.xt.game; return { w: g.width, left: r.sx(-1), right: r.sx(g.width + 1), cw: r.w }; });
   check(st2.w === 18 && st2.left >= 0 && st2.right <= st2.cw + 0.5, `still fits after widening to ${st2.w}`);
+  // Keep widening to 34, like a long real game.
+  await page.evaluate(() => { for (let i = 0; i < 8; i++) window.xt.game.expand(); window.xt.game.drainEvents(); window.xt.renderer.wallAnim = 0; });
+  await page.waitForTimeout(300);
+  const st3 = await page.evaluate(() => {
+    const r = window.xt.renderer, g = window.xt.game;
+    return { w: g.width, vis: g.visible, cell: r.cell, left: r.sx(-1), right: r.sx(g.width + 1), top: r.sy(1), bot: r.sy(g.rows + 1), cw: r.w, ch: r.h };
+  });
+  check(st3.w === 34, `width 34 (got ${st3.w})`);
+  check(st3.vis > 40, `field grew taller (${st3.vis} visible rows)`);
+  check(st3.left >= 0 && st3.right <= st3.cw + 0.5, 'wide field fits horizontally');
+  check(st3.top >= -0.5 && st3.bot <= st3.ch + 0.5 && st3.bot > st3.ch * 0.85, `tall field fills the height (${st3.top.toFixed(0)}..${st3.bot.toFixed(0)} of ${st3.ch.toFixed(0)})`);
+  await page.screenshot({ path: 'shots/phone-34.png' });
+
+  // Drags with a controlled clock (headless Chrome can't deliver touch moves
+  // fast enough to test speed). Slow: ~22 px per column however tiny the
+  // cells. Fast: a quick swipe of the same length goes much further.
+  const drag = (x0, x1, ms, steps) => page.evaluate(([x0, x1, ms, steps]) => {
+    const inp = window.xt.input, g = window.xt.game;
+    g.piece.x = Math.floor(g.width / 2); g.piece.y = 2;
+    const start = g.piece.x;
+    const real = performance.now;
+    let t = real.call(performance);
+    performance.now = () => t;
+    const ev = (x) => ({ pointerId: 77, clientX: x, clientY: 500, preventDefault() {}, currentTarget: {} });
+    inp.down(ev(x0));
+    for (let i = 1; i <= steps; i++) { t += ms / steps; inp.move(ev(x0 + (x1 - x0) * i / steps)); }
+    inp.up(ev(x1));
+    performance.now = real;
+    return g.piece.x - start;
+  }, [x0, x1, ms, steps]);
+  const slow = await drag(80, 190, 1100, 40);
+  check(slow >= 4 && slow <= 6, `slow 110px drag moves ~5 columns at width 34 (got ${slow})`);
+  const fast = await drag(190, 80, 80, 6);
+  check(-fast >= 10, `fast 110px swipe moves further (got ${-fast})`);
+
   // Touch: tap rotates.
   const rot0 = await page.evaluate(() => window.xt.game.piece?.rot);
   await page.touchscreen.tap(195, 500);
