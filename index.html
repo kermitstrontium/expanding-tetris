@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="sprawl-build" content="20261019-082549">
+  <meta name="theme-color" content="#0b0e1a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Sprawl">
+  <title>Sprawl</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <aside id="left" class="side">
+      <div class="box hold-box">
+        <span class="label">Hold</span>
+        <canvas id="hold"></canvas>
+      </div>
+      <div class="stats">
+        <div class="stat score"><span class="label">Score</span><b id="score">0</b></div>
+        <div class="stat"><span class="label">Level</span><b id="level">1</b></div>
+        <div class="stat"><span class="label">Lines</span><b id="lines">0</b></div>
+        <div class="stat"><span class="label">Width</span><b id="width">10</b></div>
+      </div>
+    </aside>
+
+    <main id="stage">
+      <canvas id="board" aria-label="Playfield"></canvas>
+      <div id="toasts" aria-live="polite"></div>
+    </main>
+
+    <aside id="right" class="side">
+      <div class="box next-box">
+        <span class="label">Next</span>
+        <div id="next"></div>
+      </div>
+      <button id="pauseBtn" class="icon-btn" aria-label="Pause">❚❚</button>
+    </aside>
+  </div>
+
+  <!-- Menus. Hidden with the `hidden` attribute. -->
+  <section id="menu" class="overlay">
+    <div class="sheet">
+      <h1 class="logo">SPRAWL</h1>
+      <p class="tag">Every four-line clear pushes the walls out.</p>
+      <button class="primary" data-act="play">Play</button>
+      <div class="settings"></div>
+      <details class="help">
+        <summary>How to play</summary>
+        <div class="help-body">
+          <p>Clear lines as usual. Clear <b>four at once</b> and the field gets one column wider on <b>each side</b>.
+             Wider fields score the same per line but take more blocks to fill. When the field is wider than the
+             screen, the camera follows your piece and a strip at the top shows the whole stack.</p>
+          <table>
+            <tr><th>Touch</th><th>Keys</th><th></th></tr>
+            <tr><td>Drag sideways</td><td>← →</td><td>Move</td></tr>
+            <tr><td>Tap</td><td>↑ X</td><td>Rotate right</td></tr>
+            <tr><td>Two-finger tap</td><td>Z Ctrl</td><td>Rotate left</td></tr>
+            <tr><td>Drag down</td><td>↓</td><td>Soft drop</td></tr>
+            <tr><td>Flick down</td><td>Space</td><td>Hard drop</td></tr>
+            <tr><td>Flick up</td><td>C Shift</td><td>Hold</td></tr>
+            <tr><td>❚❚ button</td><td>Esc P</td><td>Pause</td></tr>
+          </table>
+        </div>
+      </details>
+      <div class="best"></div>
+      <p class="credits"></p>
+    </div>
+  </section>
+
+  <section id="pause" class="overlay" hidden>
+    <div class="sheet">
+      <h2>Paused</h2>
+      <button class="primary" data-act="resume">Resume</button>
+      <button data-act="restart">Restart</button>
+      <button data-act="quit">Main menu</button>
+      <div class="settings"></div>
+    </div>
+  </section>
+
+  <section id="over" class="overlay" hidden>
+    <div class="sheet">
+      <h2>Game over</h2>
+      <div class="result"></div>
+      <button class="primary" data-act="play">Play again</button>
+      <button data-act="quit">Main menu</button>
+    </div>
+  </section>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+[Unit]
+Description=Sprawl static site (tailnet :9447 -> 127.0.0.1:8091)
+Documentation=file://%h/ai-share/sprawl/README.md
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/ai-share/sprawl
+ExecStart=/usr/bin/python3 %h/ai-share/sprawl/serve.py --port 8091 --bind 127.0.0.1
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=default.target
