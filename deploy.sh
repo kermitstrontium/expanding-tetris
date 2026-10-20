@@ -16,7 +16,8 @@ BUILD="$(date -u +%Y%m%d-%H%M%S)"
 sed -i -E "s/^const BUILD = '[^']*';/const BUILD = '$BUILD';/" sw.js
 sed -i -E "s/(name=\"et-build\" content=\")[^\"]*\"/\1$BUILD\"/" index.html
 grep -q "$BUILD" sw.js && grep -q "$BUILD" index.html || { echo "stamp failed" >&2; exit 1; }
-echo "build $BUILD"
+VER=$(grep -o "version: '[0-9.]*'" js/changelog.js | head -1 | cut -d"'" -f2)
+echo "version $VER, build $BUILD"
 
 if curl -s --max-time 3 http://127.0.0.1:8091/ | grep -q "$BUILD"; then
   echo "local server is serving $BUILD"

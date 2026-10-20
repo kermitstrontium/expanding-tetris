@@ -6,6 +6,7 @@ import { Audio } from './audio.js';
 import { Input } from './input.js';
 import { THEMES, getTheme } from './themes/index.js';
 import { TRACKS } from './music/tracks.js';
+import { VERSION, CHANGELOG } from './changelog.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const STORE = 'expanding-tetris.v1';
@@ -167,6 +168,16 @@ function renderBest() {
   $('#menu .best').innerHTML = scoreTable(5, latest);
 }
 
+// Version under the Settings heading; the changelog opens beneath it.
+function renderVersion() {
+  const build = $('meta[name=et-build]')?.content;
+  const v = $('#settings .version-text');
+  v.textContent = `Version ${VERSION}`;
+  v.title = build ? `build ${build}` : '';
+  $('#settings .changelog').innerHTML = CHANGELOG.map((r) =>
+    `<section><h3>${r.version} <span>${r.date}</span></h3><ul>${r.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul></section>`).join('');
+}
+
 function renderCredits() {
   $('#menu .credits').innerHTML = 'Music: ' + TRACKS.map((t) =>
     `${t.id.toUpperCase()} <i>${t.title}</i>, ${t.credit}`).join(' ');
@@ -289,6 +300,11 @@ document.addEventListener('click', (e) => {
   else if (a === 'quit') { audio.stop(); openMenu(); }
   else if (a === 'credits') { const c = $('#menu .credits'); c.hidden = !c.hidden; }
   else if (a === 'settings') openSettings();
+  else if (a === 'changelog') {
+    const c = $('#settings .changelog');
+    c.hidden = !c.hidden;
+    b.textContent = c.hidden ? "What's new" : 'Hide';
+  }
   else if (a === 'settings-done') { show(settingsFrom); if (settingsFrom === 'menu') renderBest(); }
 });
 $('#pauseBtn').addEventListener('click', () => (mode === 'paused' ? resume() : pause()));
@@ -429,6 +445,7 @@ new ResizeObserver(() => { renderer.resize(); drawSide(true); }).observe($('#sta
 
 applyTheme(settings.theme);
 renderCredits();
+renderVersion();
 openMenu();
 // Reveal the UI once, after the arcade font is ready (or 1 s, whichever is
 // first), so the title screen doesn't jump as the font swaps in.

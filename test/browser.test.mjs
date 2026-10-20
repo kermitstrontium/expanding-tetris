@@ -160,6 +160,12 @@ await run('start-width', { width: 390, height: 844 }, async (page) => {
   check(!(await page.isVisible('#menu .settings')) && (await page.locator('#menu .chip').count()) === 0, 'title screen has no settings on it');
   await page.click('#menu [data-act=settings]');
   check(await page.isVisible('#settings'), 'Settings button opens the settings screen');
+  check(/^Version \d+\.\d+\.\d+$/.test(await page.textContent('#settings .version-text')), 'version shown under the Settings heading');
+  check(!(await page.isVisible('#settings .changelog')), 'changelog hidden at first');
+  await page.click('[data-act=changelog]');
+  check(await page.isVisible('#settings .changelog') && (await page.locator('#settings .changelog h3').count()) >= 5, "What's new opens the changelog");
+  await page.screenshot({ path: 'shots/phone-changelog.png' });
+  await page.click('[data-act=changelog]');
 
   check(!(await page.isVisible('#menu .credits')), 'credits hidden until asked for');
   check((await page.locator('#menu details').count()) === 0, 'no How to play section');

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { Game, ROWS, HIDDEN, START_WIDTH, TYPES, shapeCells, gravityMs, LOCK_DELAY, CLEAR_DELAY } from '../js/core.js';
 import { TRACKS } from '../js/music/tracks.js';
 import { THEMES, painterFor } from '../js/themes/index.js';
+import { VERSION, CHANGELOG } from '../js/changelog.js';
 
 let passed = 0;
 function test(name, fn) {
@@ -220,6 +221,18 @@ test('every theme has the required keys', () => {
       assert.ok(th.ui[k], `${th.id} ui ${k}`);
     }
     assert.equal(typeof painterFor(th), 'function');
+  }
+});
+
+test('changelog: VERSION is the newest entry, versions descend, all dated', () => {
+  assert.equal(VERSION, CHANGELOG[0].version);
+  const num = (v) => v.split('.').map(Number).reduce((a, n) => a * 1000 + n, 0);
+  for (let i = 0; i < CHANGELOG.length; i++) {
+    const r = CHANGELOG[i];
+    assert.match(r.version, /^\d+\.\d+\.\d+$/);
+    assert.match(r.date, /^\d{4}-\d{2}-\d{2}$/);
+    assert.ok(r.notes.length > 0, r.version);
+    if (i) assert.ok(num(CHANGELOG[i - 1].version) > num(r.version), `${CHANGELOG[i - 1].version} > ${r.version}`);
   }
 });
 

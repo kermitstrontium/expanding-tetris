@@ -96,6 +96,13 @@ a takedown notice if the site got noticed. If that happens, delete
 | ❚❚ | Esc P | pause |
 | | M | mute music |
 
+## Versions
+
+The version and changelog live in `js/changelog.js` and show under the
+Settings heading ("What's new"). With each release, add an entry at the top:
+patch (x.y.Z) for fixes, minor (x.Y.0) for features or rule changes. A test
+checks that `VERSION` matches the newest entry.
+
 ## Develop / deploy
 
 ```bash
