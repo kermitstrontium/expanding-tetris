@@ -96,6 +96,16 @@ a takedown notice if the site got noticed. If that happens, delete
 | ❚❚ | Esc P | pause |
 | | M | mute music |
 
+## Resume later
+
+"Resume later" in the pause menu saves the game to `localStorage`
+(`expanding-tetris.save`) and returns to the title, which then offers
+Continue. The game also saves automatically when the app goes to the
+background mid-game, so it survives iOS closing the app. The save is the
+whole game state, including the random-piece generator, so a continued game
+plays out exactly as it would have. It's a single slot, used up on Continue
+and cleared by resuming in place, abandoning, a new game or game over.
+
 ## Versions
 
 The version and changelog live in `js/changelog.js` and show under the

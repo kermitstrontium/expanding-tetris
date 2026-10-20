@@ -6,6 +6,14 @@
 
 export const CHANGELOG = [
   {
+    version: '1.1.0', date: '2026-10-20',
+    notes: [
+      'Resume later: in the pause menu, saves your game and returns to the title screen. Continue picks it up exactly where you left off, after a short READY... GO.',
+      'If the app is closed mid-game, the game is saved automatically and can be continued.',
+      'One save at a time; it\'s used up when you continue, so it can\'t be reloaded to undo a mistake.',
+    ],
+  },
+  {
     version: '1.0.0', date: '2026-10-20',
     notes: [
       'Version number and this changelog in Settings.',

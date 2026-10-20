@@ -411,3 +411,8 @@ button.link {
 .changelog h3 span { font-weight: normal; font-size: 12px; color: var(--muted); margin-left: 6px; }
 .changelog ul { margin: 0 0 6px; padding-left: 18px; }
 .changelog li { margin: 2px 0; }
+
+/* Continue button carries a second line: the saved game's score and width. */
+button.continue { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+button.continue[hidden] { display: none; }
+button.continue small { font-size: 12px; font-weight: normal; opacity: 0.75; }

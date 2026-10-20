@@ -1,6 +1,6 @@
 // Rules tests. Run: node test/core.test.js
 import assert from 'node:assert/strict';
-import { Game, ROWS, HIDDEN, START_WIDTH, TYPES, shapeCells, gravityMs, LOCK_DELAY, CLEAR_DELAY } from '../js/core.js';
+import { Game, SAVE_VERSION, ROWS, HIDDEN, START_WIDTH, TYPES, shapeCells, gravityMs, LOCK_DELAY, CLEAR_DELAY } from '../js/core.js';
 import { TRACKS } from '../js/music/tracks.js';
 import { THEMES, painterFor } from '../js/themes/index.js';
 import { VERSION, CHANGELOG } from '../js/changelog.js';
@@ -234,6 +234,34 @@ test('changelog: VERSION is the newest entry, versions descend, all dated', () =
     assert.ok(r.notes.length > 0, r.version);
     if (i) assert.ok(num(CHANGELOG[i - 1].version) > num(r.version), `${CHANGELOG[i - 1].version} > ${r.version}`);
   }
+});
+
+test('save / restore: a restored game continues identically', () => {
+  // Same scripted inputs on the original and on a JSON round-trip copy.
+  const play = (g, seed, steps) => {
+    let r = seed;
+    for (let i = 0; i < steps && !g.over; i++) {
+      r = (r * 1103515245 + 12345) >>> 0;
+      const k = r % 100;
+      if (k < 25) g.move(k < 12 ? -1 : 1);
+      else if (k < 40) g.rotate(k < 32 ? 1 : -1);
+      else if (k < 44) g.hardDrop();
+      else if (k < 45) g.holdPiece();
+      g.update(16);
+    }
+  };
+  const a = new Game({ seed: 21 });
+  play(a, 1, 400);
+  assert.ok(!a.over && a.score > 0, 'still mid-game when saved');
+  const saved = JSON.parse(JSON.stringify(a.toJSON()));
+  assert.equal(saved.v, SAVE_VERSION);
+  const b = Game.fromJSON(saved);
+  assert.deepEqual(b.toJSON(), a.toJSON());
+  play(a, 2, 5000);
+  play(b, 2, 5000);
+  assert.deepEqual(b.toJSON(), a.toJSON(), 'diverged after restore');
+  assert.equal(b.score, a.score);
+  assert.throws(() => Game.fromJSON({ v: 999 }));
 });
 
 test('long random play never corrupts the board', () => {

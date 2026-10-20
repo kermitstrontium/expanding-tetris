@@ -183,6 +183,59 @@ function renderCredits() {
     `${t.id.toUpperCase()} <i>${t.title}</i>, ${t.credit}`).join(' ');
 }
 
+// ---- resume later --------------------------------------------------------------
+//
+// One save slot. It holds a game that's been put aside: by "Resume later" in
+// the pause menu, or automatically when the app goes into the background
+// mid-game (so it survives iOS closing the app). Continuing, resuming in
+// place, abandoning, starting a new game or game over all clear it, so an
+// old save can't be reloaded to undo a mistake.
+
+const SAVE_KEY = 'expanding-tetris.save';
+
+function saveGame() {
+  if (!game || game.over) return;
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ game: game.toJSON(), at: Date.now() })); } catch {}
+}
+
+function loadSave() {
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY));
+    if (!s) return null;
+    Game.fromJSON(s.game);      // throws if it's from an incompatible version
+    return s;
+  } catch {
+    clearSave();
+    return null;
+  }
+}
+
+function clearSave() {
+  localStorage.removeItem(SAVE_KEY);
+}
+
+let freezeUntil = 0;   // a continued game waits for READY... GO
+
+function continueGame() {
+  const s = loadSave();
+  if (!s) return openMenu();
+  audio.unlock();
+  game = Game.fromJSON(s.game);
+  clearSave();
+  renderer.wallAnim = 0;
+  renderer.particles.length = 0;
+  mode = 'playing';
+  input.enabled = false;
+  freezeUntil = performance.now() + 1600;
+  show(null);
+  toast('READY', 'big');
+  setTimeout(() => { if (mode === 'playing') toast('GO!', 'big'); }, 1100);
+  audio.stop();
+  audio.setTempo(1);
+  startMusic();
+  updateHud(true);
+}
+
 // ---- screens -------------------------------------------------------------------
 
 function show(id) {
@@ -193,6 +246,13 @@ function openMenu() {
   mode = 'menu';
   input.enabled = false;
   renderBest();
+  // With a saved game: Continue (showing what it is) + New game; else Play.
+  const s = loadSave();
+  const cont = $('#menu .continue'), play = $('#menu .new-game');
+  cont.hidden = !s;
+  if (s) cont.querySelector('small').textContent = `${s.game.score.toLocaleString()} · width ${s.game.width}`;
+  play.textContent = s ? 'New game' : 'Play';
+  play.classList.toggle('primary', !s);
   show('menu');
 }
 
@@ -230,6 +290,7 @@ function pause() {
 
 function resume() {
   if (mode !== 'paused') return;
+  clearSave();   // carrying on in place: any background autosave is stale
   mode = 'playing';
   input.enabled = true;
   show(null);
@@ -242,6 +303,7 @@ function resume() {
 
 function gameOver(e) {
   mode = 'over';
+  clearSave();
   input.enabled = false;
   audio.stop();
   audio.sfx('gameover');
@@ -295,9 +357,11 @@ document.addEventListener('click', (e) => {
   if (!b) return;
   audio.unlock();
   const a = b.dataset.act;
-  if (a === 'play' || a === 'restart') newGame();
+  if (a === 'play' || a === 'restart') { clearSave(); newGame(); }
+  else if (a === 'continue') continueGame();
+  else if (a === 'resume-later') { saveGame(); audio.stop(); game = null; openMenu(); }
   else if (a === 'resume') resume();
-  else if (a === 'quit') { audio.stop(); openMenu(); }
+  else if (a === 'quit') { clearSave(); audio.stop(); game = null; openMenu(); }
   else if (a === 'credits') { const c = $('#menu .credits'); c.hidden = !c.hidden; }
   else if (a === 'settings') openSettings();
   else if (a === 'changelog') {
@@ -308,7 +372,15 @@ document.addEventListener('click', (e) => {
   else if (a === 'settings-done') { show(settingsFrom); if (settingsFrom === 'menu') renderBest(); }
 });
 $('#pauseBtn').addEventListener('click', () => (mode === 'paused' ? resume() : pause()));
-document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+// Going to the background mid-game pauses and saves, so the game survives
+// the app being closed while it's away.
+const putAside = () => {
+  if (!game || game.over || (mode !== 'playing' && mode !== 'paused')) return;
+  pause();
+  saveGame();
+};
+document.addEventListener('visibilitychange', () => { if (document.hidden) putAside(); });
+window.addEventListener('pagehide', putAside);
 
 // ---- input actions -------------------------------------------------------------
 
@@ -417,7 +489,10 @@ function frame(now) {
   const dt = Math.min(50, now - last);
   last = now;
   if (game) {
-    if (mode === 'playing') {
+    if (mode === 'playing' && now < freezeUntil) {
+      // READY... GO after continuing a saved game
+    } else if (mode === 'playing') {
+      if (freezeUntil) { freezeUntil = 0; input.enabled = true; }
       input.update(dt);
       game.update(dt);
       handleEvents();
@@ -484,4 +559,4 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 }
 
 // For tests and debugging in the console.
-window.xt = { get game() { return game; }, renderer, audio, input, settings, newGame };
+window.xt = { get game() { return game; }, get mode() { return mode; }, renderer, audio, input, settings, newGame };

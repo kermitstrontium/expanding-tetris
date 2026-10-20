@@ -200,6 +200,42 @@ await run('start-width', { width: 390, height: 844 }, async (page) => {
   check(await page.isVisible('#menu .credits'), 'Credits link reveals them');
 });
 
+await run('resume-later', { width: 390, height: 844 }, async (page) => {
+  check(await page.isVisible('#menu .new-game') && !(await page.isVisible('#menu .continue')), 'no save: just Play');
+  await page.click('[data-act=play]');
+  await page.waitForTimeout(200);
+  // Play a little so there's something worth saving.
+  await page.evaluate(() => {
+    const g = window.xt.game;
+    for (let i = 0; i < 6; i++) { g.move(i % 2 ? 1 : -1); g.hardDrop(); g.update(400); }
+    g.drainEvents();
+  });
+  await page.click('#pauseBtn');
+  const before = await page.evaluate(() => JSON.stringify(window.xt.game.toJSON()));
+  await page.click('[data-act=resume-later]');
+  await page.waitForTimeout(150);
+  check(await page.isVisible('#menu .continue'), 'Resume later returns to the title with Continue');
+  check((await page.textContent('#menu .new-game')) === 'New game', 'Play becomes New game');
+  await page.reload({ waitUntil: 'networkidle' });
+  check(await page.isVisible('#menu .continue'), 'Continue survives the app being closed (reload)');
+  const label = await page.textContent('#menu .continue small');
+  await page.screenshot({ path: 'shots/phone-continue.png' });
+  await page.click('[data-act=continue]');
+  await page.waitForTimeout(100);
+  const after = await page.evaluate(() => JSON.stringify(window.xt.game.toJSON()));
+  check(after === before, `Continue restores the exact game (${label})`);
+  check(await page.evaluate(() => !window.xt.input.enabled), 'READY pause before play resumes');
+  check(await page.evaluate(() => localStorage.getItem('expanding-tetris.save') === null), 'the save is used up on Continue');
+  await page.waitForTimeout(1800);
+  check(await page.evaluate(() => window.xt.input.enabled && window.xt.mode === 'playing'), 'play resumes after GO');
+  // Leaving the app mid-game autosaves.
+  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+  check(await page.evaluate(() => window.xt.mode === 'paused' && !!localStorage.getItem('expanding-tetris.save')), 'leaving the app mid-game pauses and autosaves');
+  // Abandoning clears it.
+  await page.click('#pause [data-act=quit]');
+  check(!(await page.isVisible('#menu .continue')) && (await page.evaluate(() => localStorage.getItem('expanding-tetris.save') === null)), 'Main menu from pause abandons the save');
+});
+
 await run('landscape', { width: 844, height: 390 }, async (page) => {
   await page.click('[data-act=play]');
   await page.waitForTimeout(300);

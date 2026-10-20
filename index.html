@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-  <meta name="et-build" content="20261020-021010">
+  <meta name="et-build" content="20261020-045419">
   <meta name="theme-color" content="#0b0e1a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -49,7 +49,8 @@
   <section id="menu" class="overlay">
     <div class="sheet">
       <h1 class="logo"><small>Expanding</small>TETRIS</h1>
-      <button class="primary" data-act="play">Play</button>
+      <button class="primary continue" data-act="continue" hidden>Continue<small></small></button>
+      <button class="primary new-game" data-act="play">Play</button>
       <button data-act="settings">Settings</button>
       <div class="best"></div>
       <button class="credits-link" data-act="credits">Credits</button>
@@ -61,6 +62,7 @@
     <div class="sheet">
       <h2>Paused</h2>
       <button class="primary" data-act="resume">Resume</button>
+      <button data-act="resume-later">Resume later</button>
       <button data-act="restart">Restart</button>
       <button data-act="settings">Settings</button>
       <button data-act="quit">Main menu</button>

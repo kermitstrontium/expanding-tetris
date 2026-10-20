@@ -89,17 +89,23 @@ export function gravityMs(level) {
   return 1000 * Math.pow(0.8 - (l - 1) * 0.007, l - 1);
 }
 
-// Small seeded PRNG so tests (and replays, one day) are deterministic.
-export function mulberry32(seed) {
-  let a = seed >>> 0;
-  return function () {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+// Small seeded PRNG (mulberry32). Its whole state is one 32-bit number, so a
+// saved game carries on dealing exactly the pieces it would have.
+export function nextRandom(state) {
+  const a = (state + 0x6d2b79f5) >>> 0;
+  let t = a;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return [a, ((t ^ (t >>> 14)) >>> 0) / 4294967296];
 }
+
+// Fields that make up a game, for saving and restoring ("Resume later").
+const SAVED = [
+  'width', 'startWidth', 'startLevel', 'grow', 'visible', 'rng', 'board', 'bag', 'queue',
+  'hold', 'holdUsed', 'piece', 'score', 'lines', 'tetrises', 'expansions', 'combo',
+  'backToBack', 'clearing', 'gravAcc', 'lockTimer', 'lockResets', 'lowestY', 'time', 'over',
+];
+export const SAVE_VERSION = 1;
 
 export class Game {
   constructor(opts = {}) {
@@ -109,7 +115,7 @@ export class Game {
     this.grow = opts.grow ?? true;         // tests can turn height growth off
     // A wider start is taller too, by the same 1:2 rule.
     this.visible = this.grow ? Math.max(VISIBLE, this.width * ROWS_PER_COL) : VISIBLE;
-    this.rand = mulberry32(opts.seed ?? (Math.random() * 2 ** 32) >>> 0);
+    this.rng = (opts.seed ?? Math.random() * 2 ** 32) >>> 0;
     this.board = [];
     for (let y = 0; y < this.rows; y++) this.board.push(new Array(this.width).fill(null));
     this.bag = [];
@@ -134,6 +140,28 @@ export class Game {
     this.events = [];
     this.refillQueue();
     this.spawn();
+  }
+
+  rand() {
+    const [state, r] = nextRandom(this.rng);
+    this.rng = state;
+    return r;
+  }
+
+  // Plain-data snapshot; JSON-safe. Restore with Game.fromJSON.
+  toJSON() {
+    const o = { v: SAVE_VERSION };
+    for (const k of SAVED) o[k] = structuredClone(this[k]);
+    return o;
+  }
+
+  static fromJSON(o) {
+    if (!o || o.v !== SAVE_VERSION) throw new Error('incompatible save');
+    const g = new Game({ seed: 1 });
+    for (const k of SAVED) g[k] = structuredClone(o[k]);
+    g.softDropping = false;
+    g.events = [];
+    return g;
   }
 
   get rows() {
