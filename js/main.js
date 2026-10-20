@@ -428,6 +428,12 @@ new ResizeObserver(() => { renderer.resize(); drawSide(true); }).observe($('#sta
 applyTheme(settings.theme);
 renderCredits();
 openMenu();
+// Reveal the UI once, after the arcade font is ready (or 1 s, whichever is
+// first), so the title screen doesn't jump as the font swaps in.
+Promise.race([
+  document.fonts?.load('12px "Press Start 2P"') ?? Promise.resolve(),
+  new Promise((r) => setTimeout(r, 1000)),
+]).catch(() => {}).then(() => document.documentElement.classList.add('ready'));
 requestAnimationFrame(frame);
 
 // ---- PWA ---------------------------------------------------------------------
@@ -443,9 +449,13 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
       });
     });
   }).catch(() => {});
+  // Only a *new version* replacing an old one needs a reload. On a first
+  // visit the worker simply takes control of an already-current page;
+  // reloading then just made the title screen flash.
+  const hadController = !!navigator.serviceWorker.controller;
   let reloaded = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (reloaded) return;
+    if (reloaded || !hadController) return;
     const reload = () => { reloaded = true; location.reload(); };
     if (mode === 'menu') reload();
     else {

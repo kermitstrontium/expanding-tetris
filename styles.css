@@ -17,8 +17,13 @@
 @font-face {
   font-family: 'Press Start 2P';
   src: url('fonts/PressStart2P-Regular.ttf') format('truetype');
-  font-display: swap;
+  font-display: block;
 }
+
+/* Nothing shows until main.js has built the menu and the font is in. */
+html:not(.ready) body { opacity: 0; animation: reveal 0s 3s forwards; }  /* failsafe */
+@keyframes reveal { to { opacity: 1; } }
+html.ready body { opacity: 1; transition: opacity 0.18s ease-out; }
 
 * {
   box-sizing: border-box;

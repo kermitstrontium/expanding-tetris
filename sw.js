@@ -4,7 +4,7 @@
    BUILD is stamped by deploy.sh. It must change on every deploy: browsers
    only reinstall a service worker when this file's bytes change. */
 
-const BUILD = '20261019-233351';
+const BUILD = '20261020-014110';
 const CACHE = 'expanding-tetris-' + BUILD;
 
 const ASSETS = [
