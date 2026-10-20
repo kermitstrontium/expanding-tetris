@@ -1,3 +1,7 @@
+// First-load check: how many times the page loads and what the title screen
+// looks like over the first ~2.5 s. Run against a fresh browser profile:
+//   NODE_PATH=<playwright-core> node test/firstload.mjs https://expandingtetris.berger.au/
+// Expect "total loads 1" and the menu appearing once, complete.
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright-core');
@@ -9,7 +13,7 @@ let navs = 0; const t0 = Date.now();
 page.on('framenavigated', (f) => { if (f === page.mainFrame()) console.log(`load #${++navs} at ${Date.now() - t0}ms`); });
 page.on('requestfinished', (r) => { if (r.url().includes('.ttf')) console.log(`font loaded at ${Date.now() - t0}ms`); });
 await page.goto(url, { waitUntil: 'commit' });
-for (const ms of [0, 150, 400, 800, 1500, 2500]) {
+for (const ms of [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]) {
   await page.waitForTimeout(ms === 0 ? 0 : 150);
   const st = await page.evaluate(() => {
     const s = document.querySelector('#menu .sheet');
