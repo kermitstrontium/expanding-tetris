@@ -138,6 +138,8 @@ export class Input {
       t0: performance.now(),
       moved: false, spent: false, axis: null,
       trail: [{ x: e.clientX, y: e.clientY, t: performance.now() }],
+      path: [{ x: e.clientX, y: e.clientY, t: performance.now() }],   // whole gesture
+      hmoves: [],          // sideways moves made: { t, d }
     };
   }
 
@@ -149,32 +151,54 @@ export class Input {
     g.trail.push({ x: e.clientX, y: e.clientY, t: now });
     while (g.trail.length > 2 && now - g.trail[0].t > 90) g.trail.shift();
 
-    // Pointer acceleration. A slow drag moves one column per SLOW_STEP px
-    // however small the cells are, so a wide zoomed-out field stays precise.
-    // A fast swipe steps per cell (or less), so long trips are still one
-    // flick. Same idea vertically for soft drop on tall fields.
+    g.path.push({ x: e.clientX, y: e.clientY, t: now });
+
+    // Pointer acceleration, per axis. A slow drag moves one column per
+    // SLOW_STEP px however small the cells are, so a wide zoomed-out field
+    // stays precise; a fast sideways swipe steps per cell (or less), so long
+    // trips are still one flick. Sideways steps only speed up for sideways
+    // speed: a fast downward flick must not make sideways drift count.
     const cell = this.cellSize();
-    const v = this.speed(g, now);
-    const fast = Math.min(1, Math.max(0, (v - 0.25) / 1.0));   // 0 slow .. 1 fast (px/ms)
-    const hStep = lerp(Math.max(SLOW_STEP, cell * 0.85), Math.max(FAST_MIN, cell * 0.85), fast);
-    const vStep = lerp(Math.max(SLOW_STEP * 0.7, cell * 0.85), Math.max(4, cell * 0.5), fast);
+    const { vx, vy } = this.velocity(g, now);
+    const fastX = Math.min(1, Math.max(0, (Math.abs(vx) - 0.25) / 1.0));
+    const fastY = Math.min(1, Math.max(0, (Math.abs(vy) - 0.25) / 1.0));
+    const slowH = Math.max(SLOW_STEP, cell * 0.85);
+    const hStep = lerp(slowH, Math.max(FAST_MIN, cell * 0.85), fastX);
+    const vStep = lerp(Math.max(SLOW_STEP * 0.7, cell * 0.85), Math.max(4, cell * 0.5), fastY);
     const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
     if (!g.axis && Math.hypot(dx, dy) > 10) g.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+    const side = (d) => { g.hmoves.push({ t: now, d }); g.moved = true; this.on(d > 0 ? 'right' : 'left'); };
     if (g.axis === 'x') {
-      while (e.clientX - g.ax >= hStep) { g.ax += hStep; g.moved = true; this.on('right'); }
-      while (g.ax - e.clientX >= hStep) { g.ax -= hStep; g.moved = true; this.on('left'); }
+      while (e.clientX - g.ax >= hStep) { g.ax += hStep; side(1); }
+      while (g.ax - e.clientX >= hStep) { g.ax -= hStep; side(-1); }
     } else if (g.axis === 'y') {
-      // Allow sideways correction mid-drop once it's clearly intended.
-      if (Math.abs(e.clientX - g.ax) > hStep * 1.5) g.axis = 'x';
+      // Switch a downward drag to sideways only when that's clearly meant:
+      // a real sideways distance, not drift during a quick flick.
+      if (Math.abs(e.clientX - g.ax) > slowH * 1.5 && Math.abs(vx) > Math.abs(vy)) g.axis = 'x';
       while (e.clientY - g.ay >= vStep) { g.ay += vStep; g.moved = true; this.on('softStep'); }
     }
   }
 
-  // Finger speed in px/ms over the last ~90 ms.
-  speed(g, now) {
+  // Finger velocity in px/ms over the last ~90 ms.
+  velocity(g, now) {
     const a = g.trail[0], b = g.trail[g.trail.length - 1];
     const dt = Math.max(16, now - a.t);
-    return Math.hypot(b.x - a.x, b.y - a.y) / dt;
+    return { vx: (b.x - a.x) / dt, vy: (b.y - a.y) / dt };
+  }
+
+  // When the final downward flick began: walk back along the gesture while
+  // the finger was still moving down quickly.
+  flickStart(g) {
+    const p = g.path;
+    let i = p.length - 1;
+    while (i > 0) {
+      // Finger-up usually repeats the last position: skip still segments.
+      if (p[i].t - p[i - 1].t < 1 || (p[i].x === p[i - 1].x && p[i].y === p[i - 1].y)) { i--; continue; }
+      const dt = p[i].t - p[i - 1].t;
+      if ((p[i].y - p[i - 1].y) / dt < 0.4) break;
+      i--;
+    }
+    return p[i].t;
   }
 
   up(e, cancelled) {
@@ -194,6 +218,12 @@ export class Input {
     const cell = Math.max(14, this.cellSize());
 
     if (vy > 1.1 && Math.abs(vy) > Math.abs(vx) * 1.5 && dy > cell) {
+      // Drop the piece where it was when the flick began: undo any sideways
+      // steps that finger drift made during the flick itself.
+      g.path.push({ x: e.clientX, y: e.clientY, t: now });
+      const since = this.flickStart(g);
+      const drift = g.hmoves.filter((m) => m.t >= since).reduce((n, m) => n + m.d, 0);
+      for (let i = 0; i < Math.abs(drift); i++) this.on(drift > 0 ? 'nudgeLeft' : 'nudgeRight');
       this.on('hardDrop');
     } else if (vy < -0.9 && -dy > cell * 1.5 && Math.abs(dy) > Math.abs(dx)) {
       this.on('hold');

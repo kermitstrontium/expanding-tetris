@@ -96,6 +96,39 @@ await run('phone', { width: 390, height: 844 }, async (page) => {
   const fast = await drag(190, 80, 80, 6);
   check(-fast >= 10, `fast 110px swipe moves further (got ${-fast})`);
 
+  // Hard-drop flicks with sideways drift. pts = [[dtMs, x, y], ...].
+  const gesture = (pts) => page.evaluate((pts) => {
+    const inp = window.xt.input, g = window.xt.game;
+    g.piece = { type: 'T', rot: 0, x: Math.floor(g.width / 2), y: 3 };
+    const start = g.piece.x;
+    let dropX = null;
+    const orig = g.hardDrop;
+    g.hardDrop = function () { dropX = this.piece.x; g.hardDrop = orig; return orig.call(this); };
+    const real = performance.now;
+    let t = real.call(performance);
+    performance.now = () => t;
+    const ev = (x, y) => ({ pointerId: 78, isPrimary: true, clientX: x, clientY: y, preventDefault() {}, currentTarget: {} });
+    const [, x0, y0] = pts[0];
+    inp.down(ev(x0, y0));
+    for (const [dt, x, y] of pts.slice(1)) { t += dt; inp.move(ev(x, y)); }
+    const [, xe, ye] = pts[pts.length - 1];
+    inp.up(ev(xe, ye));
+    performance.now = real;
+    g.hardDrop = orig;
+    return dropX === null ? null : dropX - start;
+  }, pts);
+  // Fast flick: 200 px down in ~100 ms, drifting 28 px right.
+  const flick = [[0, 150, 300]];
+  for (let i = 1; i <= 8; i++) flick.push([12, 150 + i * 3.5, 300 + i * 25]);
+  const d1 = await gesture(flick);
+  check(d1 === 0, `fast flick with sideways drift drops in the same column (moved ${d1})`);
+  // Slow deliberate drag right (~2 columns), then a drifting flick.
+  const combo = [[0, 100, 300]];
+  for (let i = 1; i <= 20; i++) combo.push([40, 100 + i * 2.4, 300]);     // 48 px in 800 ms
+  for (let i = 1; i <= 8; i++) combo.push([12, 148 + i * 3.5, 300 + i * 25]);
+  const d2 = await gesture(combo);
+  check(d2 === 2, `slow drag keeps its 2 columns, flick drift is ignored (moved ${d2})`);
+
   // Touch: tap rotates.
   const rot0 = await page.evaluate(() => { const g = window.xt.game; g.piece = { type: 'T', rot: 0, x: Math.floor(g.width / 2), y: 5 }; return 0; });
   await page.touchscreen.tap(195, 500);

@@ -311,6 +311,8 @@ function act(a) {
     case 'rotateCW': if (game.rotate(1)) audio.sfx('rotate'); break;
     case 'rotateCCW': if (game.rotate(-1)) audio.sfx('rotate'); break;
     case 'hardDrop': game.hardDrop(); break;
+    case 'nudgeLeft': game.move(-1); break;    // silent: undoing flick drift
+    case 'nudgeRight': game.move(1); break;
     case 'hold': game.holdPiece(); break;
     case 'softOn': game.setSoftDrop(true); break;
     case 'softOff': game.setSoftDrop(false); break;
